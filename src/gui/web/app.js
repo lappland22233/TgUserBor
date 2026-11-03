@@ -1388,11 +1388,7 @@ function initListeners() {
     forwardSearch.oninput = (e) => renderForwardDialogsList(e.target.value);
   }
 
-  // Voice Recording Buttons
-  const btnVoiceRecord = document.getElementById('btn-client-voice-record');
-  if (btnVoiceRecord) {
-    btnVoiceRecord.onclick = () => startVoiceRecording();
-  }
+  // Voice Recording Buttons (cancel/send within the recording bar)
   const btnCancelVoice = document.getElementById('btn-cancel-voice-rec');
   if (btnCancelVoice) btnCancelVoice.onclick = () => stopVoiceRecording(false);
   const btnSendVoice = document.getElementById('btn-send-voice-rec');
@@ -1484,10 +1480,30 @@ function initListeners() {
     };
   });
 
-  const btnSendMsg = document.getElementById('btn-client-send-msg');
-  if (btnSendMsg) btnSendMsg.onclick = () => sendClientMessage();
-
+  // Morph send/voice button (single button: mic when empty, send when text)
+  const btnMorph = document.getElementById('btn-chat-morph');
   const msgTextarea = document.getElementById('client-message-textarea');
+  if (btnMorph && msgTextarea) {
+    // Toggle morph state based on input
+    const updateMorphState = () => {
+      const hasText = msgTextarea.value.trim().length > 0 || state.clientStagedFile;
+      btnMorph.classList.toggle('has-text', Boolean(hasText));
+      btnMorph.title = hasText ? '发送消息' : '录制语音消息';
+    };
+    msgTextarea.addEventListener('input', updateMorphState);
+    // Also watch for staged file changes
+    setInterval(updateMorphState, 500); // lightweight poll for staged file
+
+    btnMorph.onclick = () => {
+      const hasText = msgTextarea.value.trim().length > 0 || state.clientStagedFile;
+      if (hasText) {
+        sendClientMessage();
+      } else {
+        startVoiceRecording();
+      }
+    };
+  }
+
   if (msgTextarea) {
     msgTextarea.onkeydown = (e) => {
       // 1. Chinese IME composition guard
@@ -1570,6 +1586,7 @@ function initListeners() {
   }
   updateChatSendHint();
   initChatDragAndDrop();
+  initSwipeToReply();
   initChatContextMenu();
 
   const btnInsertLinkClose = document.getElementById('btn-insert-link-close');
@@ -1900,12 +1917,130 @@ function renderClientDialogs() {
           ${unreadHtml}
         </div>
       </div>
+      <div class="dialog-hover-actions">
+        <button class="dialog-action-btn" data-action="pin" title="${d.pinned ? '取消置顶' : '置顶'}" onclick="event.stopPropagation(); toggleDialogPin(${d.id}, ${!d.pinned})">
+          <svg class="ui-icon-xs"><use href="#icon-pin"/></svg>
+        </button>
+        <button class="dialog-action-btn" data-action="mute" title="${isMuted ? '取消静音' : '静音'}" onclick="event.stopPropagation(); toggleDialogMute(${d.id})">
+          <svg class="ui-icon-xs"><use href="#icon-volume-off"/></svg>
+        </button>
+        <button class="dialog-action-btn" data-action="more" title="更多操作" onclick="event.stopPropagation(); showDialogContextMenu(event, ${d.id})">
+          <svg class="ui-icon-xs"><use href="#icon-dots-vertical"/></svg>
+        </button>
+      </div>
     `;
 
     item.onclick = () => selectClientChat(d);
+    item.oncontextmenu = (e) => {
+      e.preventDefault();
+      showDialogContextMenu(e, d.id);
+    };
     container.appendChild(item);
   }
 }
+
+// ---- Dialog hover actions & context menu ----
+
+window.toggleDialogPin = async (chatId, pin) => {
+  try {
+    await api(`/api/instances/${state.clientSelectedInstance}/account/pin`, 'POST', { chatId, pin });
+    showToast(pin ? '已置顶' : '已取消置顶', 'success');
+    loadClientDialogs();
+  } catch (err) {
+    showToast(`操作失败: ${err.message}`, 'error');
+  }
+};
+
+window.toggleDialogMute = async (chatId) => {
+  try {
+    await api(`/api/instances/${state.clientSelectedInstance}/account/mute-chat`, 'POST', { chatId });
+    showToast('已切换静音状态', 'success');
+    loadClientDialogs();
+  } catch (err) {
+    showToast(`操作失败: ${err.message}`, 'error');
+  }
+};
+
+window.showDialogContextMenu = (event, chatId) => {
+  const existing = document.getElementById('dialog-ctx-menu');
+  if (existing) existing.remove();
+
+  const menu = document.createElement('div');
+  menu.id = 'dialog-ctx-menu';
+  menu.className = 'miuix-msg-menu';
+  menu.style.display = 'flex';
+
+  const d = (state.clientDialogs || []).find((x) => String(x.id) === String(chatId));
+  const isMuted = Boolean(state.clientMutedChats && state.clientMutedChats[chatId]);
+
+  menu.innerHTML = `
+    <div class="msg-menu-list">
+      <button class="msg-menu-item" data-action="pin">
+        <svg class="ui-icon-sm"><use href="#icon-pin"/></svg>
+        <span>${d?.pinned ? '取消置顶' : '置顶对话'}</span>
+      </button>
+      <button class="msg-menu-item" data-action="mute">
+        <svg class="ui-icon-sm"><use href="#icon-volume-off"/></svg>
+        <span>${isMuted ? '取消静音' : '静音对话'}</span>
+      </button>
+      <button class="msg-menu-item" data-action="read">
+        <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
+        <span>标为已读</span>
+      </button>
+      <button class="msg-menu-item" data-action="archive">
+        <svg class="ui-icon-sm"><use href="#icon-instances"/></svg>
+        <span>归档对话</span>
+      </button>
+      <div class="msg-menu-divider"></div>
+      <button class="msg-menu-item danger" data-action="delete">
+        <svg class="ui-icon-sm"><use href="#icon-trash"/></svg>
+        <span>删除对话</span>
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(menu);
+  menu.style.left = `${Math.min(event.clientX, window.innerWidth - 220)}px`;
+  menu.style.top = `${Math.min(event.clientY, window.innerHeight - 200)}px`;
+
+  menu.querySelectorAll('.msg-menu-item').forEach((btn) => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      try {
+        if (action === 'pin') await window.toggleDialogPin(chatId, !d?.pinned);
+        else if (action === 'mute') await window.toggleDialogMute(chatId);
+        else if (action === 'read') {
+          await api(`/api/instances/${state.clientSelectedInstance}/account/read`, 'POST', { chatId });
+          showToast('已标为已读', 'success');
+          loadClientDialogs();
+        } else if (action === 'archive') {
+          await api(`/api/instances/${state.clientSelectedInstance}/account/toggle-archive`, 'POST', { chatId });
+          showToast('已归档', 'success');
+          loadClientDialogs();
+        } else if (action === 'delete') {
+          if (confirm('确定要删除此对话吗？此操作不可撤销。')) {
+            await api(`/api/instances/${state.clientSelectedInstance}/account/delete-messages`, 'POST', { chatId, all: true });
+            showToast('对话已删除', 'success');
+            loadClientDialogs();
+          }
+        }
+      } catch (err) {
+        showToast(`操作失败: ${err.message}`, 'error');
+      }
+      menu.remove();
+    };
+  });
+
+  // Close on outside click
+  const closeMenu = (e) => {
+    if (!menu.contains(e.target)) {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeMenu), 10);
+};
 
 async function selectClientChat(dialog) {
   const prevChatId = state.clientActiveChatId;
@@ -1977,7 +2112,19 @@ async function selectClientChat(dialog) {
     bot: '机器人 (Bot)',
   };
   const userTag = dialog.username ? ` | @${dialog.username}` : '';
-  document.getElementById('client-chat-subtitle').innerText = `${typeMap[dialog.type] || dialog.type} | ID: ${dialog.id}${userTag}`;
+
+  // Show member/subscriber count for groups and channels
+  let memberInfo = '';
+  if (dialog.type === 'group' || dialog.type === 'supergroup') {
+    const count = dialog.participantsCount || dialog.membersCount;
+    memberInfo = count ? ` · ${count} 位成员` : '';
+  } else if (dialog.type === 'channel') {
+    const count = dialog.participantsCount || dialog.membersCount || dialog.subscribersCount;
+    memberInfo = count ? ` · ${count} 位订阅者` : '';
+  } else if (dialog.online) {
+    memberInfo = ' · 在线';
+  }
+  document.getElementById('client-chat-subtitle').innerText = `${typeMap[dialog.type] || dialog.type}${memberInfo} | ID: ${dialog.id}${userTag}`;
   document.getElementById('client-chat-actions').style.display = 'flex';
   updateChatMuteButtonState(dialog.id);
 
@@ -2371,6 +2518,14 @@ function renderClientMessages(preserveScroll = false) {
         toggleSelectMessage(m.id);
       }
     };
+
+    // Double-click to quick-react with 👍 (official Telegram behavior)
+    wrap.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if (!state.isSelectionMode) {
+        quickToggleReaction(m.id, '👍');
+      }
+    });
 
     const senderId = m.from?.id;
     const senderName = isOut ? '我' : m.from?.firstName || m.from?.username || `UID:${m.from?.id || '?'}`;
@@ -5554,6 +5709,56 @@ function clearStagedAttachment() {
   if (strip) strip.style.display = 'none';
   const fileInput = document.getElementById('chat-file-input');
   if (fileInput) fileInput.value = '';
+}
+
+// Swipe-to-reply gesture (mobile)
+function initSwipeToReply() {
+  const container = document.getElementById('client-messages-container');
+  if (!container) return;
+
+  let startX = 0, startY = 0, startMsgX = 0;
+  let currentWrap = null;
+  let isSwiping = false;
+
+  container.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    currentWrap = e.target.closest('.chat-bubble-wrap');
+    if (currentWrap) {
+      startMsgX = 0;
+      isSwiping = false;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!currentWrap) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX;
+    const dy = Math.abs(touch.clientY - startY);
+
+    // Only swipe horizontally, max 80px
+    if (Math.abs(dx) > 15 && dy < 30) {
+      isSwiping = true;
+      startMsgX = Math.min(Math.max(dx, 0), 80);
+      currentWrap.style.transform = `translateX(${startMsgX}px)`;
+      currentWrap.style.transition = 'none';
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => {
+    if (!currentWrap) return;
+    currentWrap.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+    currentWrap.style.transform = '';
+
+    if (isSwiping && startMsgX >= 55) {
+      const msgId = Number(currentWrap.dataset.msgId);
+      if (msgId) setReplyingMessage(msgId);
+    }
+    currentWrap = null;
+    isSwiping = false;
+    startMsgX = 0;
+  }, { passive: true });
 }
 
 function initChatDragAndDrop() {
