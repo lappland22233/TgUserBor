@@ -23,7 +23,7 @@
     "plugin",
     "typescript"
   ],
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "engines": {
     "node": ">=22.5.0"
   },
