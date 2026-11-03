@@ -110,6 +110,20 @@ function chatFromEntity(c: Api.Chat | Api.Channel | Api.User): ChatRef {
 }
 
 function extractMediaAttachment(msg: Api.Message): MediaAttachment | undefined {
+  // Webpage link preview
+  const msgMedia = (msg as any).media;
+  if (msgMedia && msgMedia.className === 'MessageMediaWebPage') {
+    const wp = msgMedia.webpage;
+    return {
+      type: 'webpage',
+      webTitle: wp?.title || undefined,
+      webDescription: wp?.description || undefined,
+      webUrl: wp?.url || undefined,
+      webSiteName: wp?.siteName || undefined,
+      webPhotoThumb: Boolean(wp?.photo),
+    };
+  }
+
   if (msg.photo) {
     return {
       type: 'photo',
@@ -209,6 +223,7 @@ function extractMediaAttachment(msg: Api.Message): MediaAttachment | undefined {
     let stickerSetId: string | undefined;
     let stickerAccessHash: string | undefined;
     let stickerShortName: string | undefined;
+    let waveform: number[] | undefined;
 
     if (doc.attributes) {
       for (const attr of doc.attributes) {
@@ -216,6 +231,14 @@ function extractMediaAttachment(msg: Api.Message): MediaAttachment | undefined {
           fileName = attr.fileName;
         } else if (attr.className === 'DocumentAttributeAudio') {
           type = attr.voice ? 'voice' : 'audio';
+          // Extract waveform data (5-bit, 0-31)
+          if (attr.waveform) {
+            try {
+              const wf = attr.waveform;
+              const buf = Buffer.isBuffer(wf) ? wf : Buffer.from(wf);
+              waveform = Array.from(buf);
+            } catch { /* waveform not critical */ }
+          }
         }
       }
     }
@@ -235,6 +258,7 @@ function extractMediaAttachment(msg: Api.Message): MediaAttachment | undefined {
       stickerSetId,
       stickerAccessHash,
       stickerShortName,
+      waveform,
     };
   }
 
@@ -531,7 +555,14 @@ export class TelegramDriver implements BotAdapter {
       ? Boolean(msg.message?.includes(`@${this.selfUser.username}`))
       : false;
 
-    const media = extractMediaAttachment(msg);
+    // Service message mapping
+    let service: IncomingMessage['service'] | undefined;
+    const action = (msg as any).action;
+    if (action) {
+      service = this.mapServiceAction(action, fromUser);
+    }
+
+    const media = service ? undefined : extractMediaAttachment(msg);
 
     // Reactions
     let reactions: any[] | undefined = undefined;
@@ -564,9 +595,12 @@ export class TelegramDriver implements BotAdapter {
       };
     }
 
+    // Read status for outgoing messages
+    const read = isOut ? undefined : undefined; // Will be set by caller based on readOutboxMaxId
+
     return {
       id: msg.id,
-      text,
+      text: service ? (service.text || text) : text,
       raw: msg.message,
       entities: (msg.entities ?? []).map((e: any) => ({
         type: String(e.className),
@@ -587,7 +621,36 @@ export class TelegramDriver implements BotAdapter {
       fwdFrom,
       views: (msg as any).views ? Number((msg as any).views) : undefined,
       forwards: (msg as any).forwards ? Number((msg as any).forwards) : undefined,
+      service,
+      groupedId: (msg as any).groupedId?.toString(),
+      replies: (msg as any).replies?.replies ? Number((msg as any).replies.replies) : undefined,
     };
+  }
+
+  private mapServiceAction(action: any, fromUser: UserRef): IncomingMessage['service'] {
+    const cls = action.className || '';
+    switch (cls) {
+      case 'MessageActionChatAddUser':
+        return { type: 'joined', text: `${fromUser.firstName || '用户'} 加入了群组` };
+      case 'MessageActionChatDeleteUser':
+        return { type: 'left', text: `${fromUser.firstName || '用户'} 退出了群组` };
+      case 'MessageActionChatEditTitle':
+        return { type: 'title_changed', text: `群组名称已更改为 "${action.title || ''}"` };
+      case 'MessageActionChatEditPhoto':
+        return { type: 'photo_changed', text: `${fromUser.firstName || '用户'} 更换了群组头像` };
+      case 'MessageActionChatDeletePhoto':
+        return { type: 'photo_changed', text: `${fromUser.firstName || '用户'} 删除了群组头像` };
+      case 'MessageActionChatCreate':
+        return { type: 'created', text: `${fromUser.firstName || '用户'} 创建了群组 "${action.title || ''}"` };
+      case 'MessageActionPinMessage':
+        return { type: 'pinned', text: `${fromUser.firstName || '用户'} 置顶了一条消息` };
+      case 'MessageActionHistoryClear':
+        return { type: 'cleared', text: '聊天记录已清空' };
+      case 'MessageActionPhoneCall':
+        return { type: 'call', text: action.duration ? `通话时长 ${action.duration} 秒` : '未接来电' };
+      default:
+        return { type: 'service', text: `[系统消息]` };
+    }
   }
 
   private resolvePeer(chatId: number | string): any {
@@ -1403,6 +1466,14 @@ export class TelegramDriver implements BotAdapter {
         lastMessage: lastMsgText,
         lastSender: lastSenderName,
         isChannel: d.isChannel,
+        // Extended fields for Telegram-style client
+        online: (entity as any).status?.className === 'UserStatusOnline' ? true : undefined,
+        lastSeen: (entity as any).status?.wasOnline ? (entity as any).status.wasOnline * 1000 : undefined,
+        readInboxMaxId: (d.dialog as any)?.readInboxMaxId ? Number((d.dialog as any).readInboxMaxId) : undefined,
+        readOutboxMaxId: (d.dialog as any)?.readOutboxMaxId ? Number((d.dialog as any).readOutboxMaxId) : undefined,
+        muted: (d.dialog as any)?.notifySettings?.muteUntil ? (d.dialog as any).notifySettings.muteUntil > Date.now() / 1000 : undefined,
+        folderId: (d as any).folderId || 0,
+        archived: (d as any).folderId === 1,
       });
     }
 

@@ -166,16 +166,17 @@ export class PluginManager {
     }
   }
 
-  list(): Array<{ name: string; version: string; description?: string; enabled: boolean }> {
+  list(): Array<{ name: string; version: string; description?: string; enabled: boolean; configSchema?: unknown[] }> {
     return Array.from(this.plugins.values()).map((p) => ({
       name: p.name,
       version: p.version,
       description: p.module.manifest?.description,
       enabled: p.enabled,
+      configSchema: p.module.manifest?.configSchema || [],
     }));
   }
 
-  get(name: string): { name: string; version: string; description?: string; enabled: boolean } | undefined {
+  get(name: string): { name: string; version: string; description?: string; enabled: boolean; configSchema?: unknown[] } | undefined {
     const p = this.plugins.get(name);
     if (!p) return undefined;
     return {
@@ -183,6 +184,7 @@ export class PluginManager {
       version: p.version,
       description: p.module.manifest?.description,
       enabled: p.enabled,
+      configSchema: p.module.manifest?.configSchema || [],
     };
   }
 

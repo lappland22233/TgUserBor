@@ -67,4 +67,46 @@ export interface PluginManifest {
   description?: string;
   author?: string;
   entry?: string;
+  configSchema?: ConfigField[];
+}
+
+// ---- Config Schema Types (Schema-driven plugin configuration) ----
+
+export type ConfigFieldType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'textarea'
+  | 'color'
+  | 'multiselect';
+
+export interface ConfigFieldOption {
+  value: string | number;
+  label: string;
+}
+
+export interface ConfigField {
+  /** Configuration key (top-level key in config JSON) */
+  key: string;
+  /** Form label */
+  label: string;
+  /** Control type */
+  type: ConfigFieldType;
+  /** Help text displayed below the label */
+  description?: string;
+  /** Default value */
+  default?: string | number | boolean | Array<string | number>;
+  /** Whether the field must be filled */
+  required?: boolean;
+  /** Options list — required for select / multiselect */
+  options?: ConfigFieldOption[];
+  /** Minimum value (type=number) */
+  min?: number;
+  /** Maximum value (type=number) */
+  max?: number;
+  /** Placeholder text */
+  placeholder?: string;
+  /** Group/section title; fields with the same group are grouped together */
+  group?: string;
 }

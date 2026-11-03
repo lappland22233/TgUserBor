@@ -20,6 +20,82 @@ module.exports = {
 
 保存即热重载。
 
+## configSchema 声明式配置
+
+在 `plugin.json` 中声明 `configSchema` 后，Web 管理界面会自动生成可视化配置表单。
+
+### 字段类型
+
+| 类型 | 控件 | 说明 |
+| --- | --- | --- |
+| `string` | 单行输入 | 文本 |
+| `textarea` | 多行文本 | 长文本 |
+| `number` | 数字输入 | 支持 `min`/`max` |
+| `boolean` | 开关 | true/false |
+| `select` | 下拉框 | 需 `options` 数组 |
+| `multiselect` | 复选框组 | 需 `options` 数组 |
+| `color` | 颜色选择器 | HEX 颜色 |
+
+### 示例
+
+```json
+{
+  "name": "welcome",
+  "version": "1.0.0",
+  "entry": "index.js",
+  "configSchema": [
+    {
+      "key": "template",
+      "label": "欢迎模板",
+      "type": "textarea",
+      "description": "支持 {name} {chat} {count} 占位符",
+      "default": "欢迎 {name} 加入 {chat}！",
+      "group": "欢迎消息"
+    },
+    {
+      "key": "deleteAfter",
+      "label": "自动删除时间 (秒)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 3600,
+      "group": "欢迎消息"
+    },
+    {
+      "key": "welcomeMedia",
+      "label": "附加媒体",
+      "type": "select",
+      "options": [
+        { "value": "none", "label": "无" },
+        { "value": "sticker", "label": "贴纸" }
+      ],
+      "default": "none",
+      "group": "欢迎消息"
+    }
+  ]
+}
+```
+
+### 双模式编辑
+
+- 有 `configSchema` → 默认显示**表单模式**，可切换到 **JSON 模式**
+- 无 `configSchema` → 自动使用 JSON 模式（完全向后兼容）
+- 表单保存时进行 schema 校验（必填、类型、范围、枚举）
+- JSON 模式中可保留 schema 之外的额外键（向前兼容）
+
+### 读写配置
+
+```js
+activate(ctx) {
+  // 读取配置
+  const config = ctx.getConfig();
+  console.log(config.template);
+
+  // 更新配置
+  ctx.setConfig({ ...config, template: '新模板' });
+}
+```
+
 ## PluginContext API
 
 | 字段 | 用途 |

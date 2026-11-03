@@ -1178,6 +1178,7 @@ export async function handleApiRoute(
             description: manifest.description || '',
             author: manifest.author || 'User',
             entry: manifest.entry || 'index.js',
+            configSchema: manifest.configSchema || [],
           });
         } catch {
           pluginList.push({ name, version: '1.0.0', description: 'Manifest error' });
@@ -1323,9 +1324,26 @@ module.exports = {
     if (method === 'PUT') {
       try {
         const body = await parseJsonBody(req);
+        const config = body.config || {};
+
+        // Schema validation (if plugin declares configSchema)
+        const manifestPath = path.join(pluginsDir, pluginName, 'plugin.json');
+        if (fs.existsSync(manifestPath)) {
+          try {
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+            if (manifest.configSchema && manifest.configSchema.length > 0) {
+              const fieldErrors = validatePluginConfig(manifest.configSchema, config);
+              if (Object.keys(fieldErrors).length > 0) {
+                sendJson(res, 400, { error: '配置校验失败', fieldErrors });
+                return true;
+              }
+            }
+          } catch { /* manifest parse error — skip validation */ }
+        }
+
         const db = new Database(dbPath);
         const now = Date.now();
-        const jsonStr = JSON.stringify(body.config || {});
+        const jsonStr = JSON.stringify(config);
         db.raw().prepare(`
           INSERT INTO plugin_state (name, enabled, config_json, loaded_at, updated_at)
           VALUES (?, 1, ?, ?, ?)
@@ -1347,5 +1365,79 @@ module.exports = {
   }
 
   return false;
+}
+
+// ---- Plugin Config Schema Validation ----
+
+function validatePluginConfig(
+  schema: Array<{
+    key: string;
+    label: string;
+    type: string;
+    required?: boolean;
+    options?: Array<{ value: string | number; label: string }>;
+    min?: number;
+    max?: number;
+  }>,
+  config: Record<string, unknown>
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  for (const field of schema) {
+    const val = config[field.key];
+
+    if (field.required && (val === undefined || val === null || val === '')) {
+      errors[field.key] = `${field.label} 为必填项`;
+      continue;
+    }
+
+    if (val === undefined || val === null) continue;
+
+    switch (field.type) {
+      case 'number': {
+        const n = Number(val);
+        if (isNaN(n)) {
+          errors[field.key] = `${field.label} 必须是数字`;
+        } else if (field.min != null && n < field.min) {
+          errors[field.key] = `${field.label} 不能小于 ${field.min}`;
+        } else if (field.max != null && n > field.max) {
+          errors[field.key] = `${field.label} 不能大于 ${field.max}`;
+        }
+        break;
+      }
+      case 'boolean':
+        if (typeof val !== 'boolean') {
+          errors[field.key] = `${field.label} 必须是布尔值`;
+        }
+        break;
+      case 'select':
+        if (field.options && !field.options.some((o) => String(o.value) === String(val))) {
+          errors[field.key] = `${field.label} 选择了无效选项`;
+        }
+        break;
+      case 'multiselect':
+        if (!Array.isArray(val)) {
+          errors[field.key] = `${field.label} 必须是数组`;
+        } else if (field.options) {
+          const validValues = new Set(field.options.map((o) => String(o.value)));
+          for (const item of val) {
+            if (!validValues.has(String(item))) {
+              errors[field.key] = `${field.label} 包含无效选项`;
+              break;
+            }
+          }
+        }
+        break;
+      case 'string':
+      case 'textarea':
+      case 'color':
+        if (typeof val !== 'string') {
+          errors[field.key] = `${field.label} 必须是字符串`;
+        }
+        break;
+    }
+  }
+
+  return errors;
 }
 

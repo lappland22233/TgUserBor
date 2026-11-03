@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TGuserBOT 控制台</title>
-  <link rel="stylesheet" href="style.css?v=14">
+  <script>document.documentElement.dataset.theme=localStorage.getItem('tgbot_ui_theme')||'dark';if(document.documentElement.dataset.theme==='system'){document.documentElement.dataset.theme=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}</script>
+  <link rel="stylesheet" href="themes.css?v=1">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <!-- SVG Symbols Sprite (Professional Vector Icons, Zero Emojis) -->
@@ -387,6 +389,10 @@
         <li class="nav-item" data-view="logs">
           <span class="nav-icon"><svg class="ui-icon"><use href="#icon-terminal"/></svg></span>
           <span>运行日志</span>
+        </li>
+        <li class="nav-item" data-view="settings">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-settings"/></svg></span>
+          <span>设置</span>
         </li>
       </ul>
       <div class="sidebar-footer">
@@ -1089,11 +1095,16 @@
                 </div>
               </div>
             </div>
+            <!-- Right: Profile Panel (collapsible) -->
+            <aside class="client-profile-pane">
+              <!-- Content rendered by profile-panel.js -->
+            </aside>
           </div>
           </div>
         </section>
 
         <!-- 6. Scheduler View (自动重复与指定时间定时消息调度) -->
+        <section id="view-scheduler" class="view-section">
         <section id="view-scheduler" class="view-section">
           <!-- Top Clock & Actions Bar -->
           <div class="client-topbar scheduler-topbar">
@@ -1167,6 +1178,10 @@
               </table>
             </div>
           </div>
+        </section>
+
+        <section id="view-settings" class="view-section">
+          <!-- Settings page content rendered by settings.js -->
         </section>
       </div>
     </main>
@@ -1309,20 +1324,25 @@
     </div>
   </div>
 
-  <!-- Modal: Plugin Config Editor -->
+  <!-- Modal: Plugin Config Editor (Schema Form + JSON dual-mode) -->
   <div class="modal-overlay" id="modal-plugin-config">
-    <div class="modal-window" style="width: 540px;">
+    <div class="modal-window" style="width: 580px;">
       <div class="modal-header">
         <h3 class="modal-title" id="plugin-config-title">插件配置管理</h3>
         <button class="modal-close" id="btn-close-plugin-config"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">
-          编辑持久化于 SQLite <code>plugin_state</code> 表中的配置项 (JSON 格式)：
-        </p>
-        <textarea class="form-textarea" id="plugin-config-json" style="min-height: 220px; font-family: var(--font-mono);"></textarea>
+        <div class="plugin-config-mode-bar">
+          <button type="button" class="mode-btn active" id="btn-config-mode-form">表单模式</button>
+          <button type="button" class="mode-btn" id="btn-config-mode-json">JSON 模式</button>
+        </div>
+        <!-- Form mode -->
+        <form id="plugin-config-form" class="plugin-config-form-container"></form>
+        <!-- JSON mode -->
+        <textarea class="form-textarea" id="plugin-config-json" style="min-height: 220px; font-family: var(--font-mono); display:none;"></textarea>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-reset-plugin-config">恢复默认值</button>
         <button class="btn btn-secondary" id="btn-cancel-plugin-config">取消</button>
         <button class="btn btn-primary" id="btn-save-plugin-config">保存配置</button>
       </div>
@@ -2113,6 +2133,10 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="app.js?v=14"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/plugin-config-form.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/profile-panel.js"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
