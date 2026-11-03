@@ -1,0 +1,6 @@
+{
+  "name": "plugins",
+  "version": "1.0.0",
+  "description": "通过聊天指令管理实例插件热启用、热禁用与重载 (仅限主人)",
+  "entry": "index.js"
+}

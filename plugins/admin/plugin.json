@@ -1,0 +1,7 @@
+{
+  "name": "admin",
+  "version": "1.0.0",
+  "description": "强大的群组与频道管理套件 (封禁/禁言/踢出/提权/改名/成员查看)",
+  "entry": "index.js"
+}
+

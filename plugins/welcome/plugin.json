@@ -1,0 +1,6 @@
+{
+  "name": "welcome",
+  "version": "1.0.0",
+  "description": "新成员进群自动欢迎与模板配置",
+  "entry": "index.js"
+}

@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TGuserBOT 控制台</title>
+  <link rel="stylesheet" href="style.css?v=14">
+</head>
+<body>
+  <!-- SVG Symbols Sprite (Professional Vector Icons, Zero Emojis) -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      </symbol>
+      <symbol id="icon-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+        <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+        <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+      </symbol>
+      <symbol id="icon-instances" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="7" rx="2"></rect>
+        <rect x="2" y="14" width="20" height="7" rx="2"></rect>
+        <line x1="6" y1="6.5" x2="6.01" y2="6.5"></line>
+        <line x1="6" y1="17.5" x2="6.01" y2="17.5"></line>
+      </symbol>
+      <symbol id="icon-plugins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+      </symbol>
+      <symbol id="icon-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 17 10 11 4 5"></polyline>
+        <line x1="12" y1="19" x2="20" y2="19"></line>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </symbol>
+      <symbol id="icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 2l-2 2m-1.5 1.5L16 7l-2-2-1.5 1.5L14 8l-2 2-2-2-5 5a4.24 4.24 0 0 0 6 6l5-5-2-2 1.5-1.5L17 11l1.5-1.5-2-2 2-2z"></path>
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </symbol>
+      <symbol id="icon-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </symbol>
+      <symbol id="icon-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+      </symbol>
+      <symbol id="icon-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+        <rect x="9" y="9" width="6" height="6"></rect>
+        <line x1="9" y1="1" x2="9" y2="4"></line>
+        <line x1="15" y1="1" x2="15" y2="4"></line>
+        <line x1="9" y1="20" x2="9" y2="23"></line>
+        <line x1="15" y1="20" x2="15" y2="23"></line>
+        <line x1="20" y1="9" x2="23" y2="9"></line>
+        <line x1="20" y1="14" x2="23" y2="14"></line>
+        <line x1="1" y1="9" x2="4" y2="9"></line>
+        <line x1="1" y1="14" x2="4" y2="14"></line>
+      </symbol>
+      <symbol id="icon-ram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 19v-3"></path>
+        <path d="M10 19v-3"></path>
+        <path d="M14 19v-3"></path>
+        <path d="M18 19v-3"></path>
+        <path d="M6 5v3"></path>
+        <path d="M10 5v3"></path>
+        <path d="M14 5v3"></path>
+        <path d="M18 5v3"></path>
+        <rect x="2" y="8" width="20" height="8" rx="2"></rect>
+      </symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </symbol>
+      <symbol id="icon-network" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </symbol>
+      <symbol id="icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </symbol>
+      <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </symbol>
+      <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </symbol>
+      <symbol id="icon-broadcast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.93 19.07A10 10 0 0 1 2 12a10 10 0 0 1 2.93-7.07"></path>
+        <path d="M19.07 4.93A10 10 0 0 1 22 12a10 10 0 0 1-2.93 7.07"></path>
+        <path d="M7.76 16.24A6 6 0 0 1 6 12a6 6 0 0 1 1.76-4.24"></path>
+        <path d="M16.24 7.76A6 6 0 0 1 18 12a6 6 0 0 1-1.76 4.24"></path>
+        <circle cx="12" cy="12" r="2"></circle>
+      </symbol>
+      <symbol id="icon-broom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m18 15-6-6"></path>
+        <path d="M14.5 4a2.12 2.12 0 0 1 3 3l-8.5 8.5a2.12 2.12 0 0 1-3-3L14.5 4Z"></path>
+        <path d="m3 21 6-6"></path>
+      </symbol>
+      <symbol id="icon-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </symbol>
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </symbol>
+      <symbol id="icon-tools" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </symbol>
+      <symbol id="icon-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18V5l12-2v13"></path>
+        <circle cx="6" cy="18" r="3"></circle>
+        <circle cx="18" cy="16" r="3"></circle>
+      </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="4" height="16"></rect>
+        <rect x="14" y="4" width="4" height="16"></rect>
+      </symbol>
+      <symbol id="icon-skip-next" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+        <line x1="19" y1="5" x2="19" y2="19"></line>
+      </symbol>
+      <symbol id="icon-skip-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+        <line x1="5" y1="19" x2="5" y2="5"></line>
+      </symbol>
+      <symbol id="icon-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </symbol>
+      <symbol id="icon-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </symbol>
+      <symbol id="icon-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+      </symbol>
+      <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+        <polyline points="13 2 13 9 20 9"></polyline>
+      </symbol>
+      <symbol id="icon-microphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </symbol>
+      <symbol id="icon-story" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" stroke-dasharray="4 2"></circle>
+        <circle cx="12" cy="12" r="4"></circle>
+      </symbol>
+      <symbol id="icon-attach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </symbol>
+      <symbol id="icon-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 17 4 12 9 7"></polyline>
+        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+      </symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="17" x2="12" y2="22"></line>
+        <path d="M5 17h14v-2l-2-2V5l1-1V2H6v2l1 1v8l-2 2v2z"></path>
+      </symbol>
+      <symbol id="icon-search-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </symbol>
+      <symbol id="icon-playlist" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <polyline points="3 6 3 6.01 3 12 3 12.01 3 18 3 18.01"></polyline>
+      </symbol>
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </symbol>
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </symbol>
+      <symbol id="icon-zoom-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <line x1="11" y1="8" x2="11" y2="14"></line>
+        <line x1="8" y1="11" x2="14" y2="11"></line>
+      </symbol>
+      <symbol id="icon-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+      </symbol>
+      <symbol id="icon-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+      </symbol>
+      <symbol id="icon-sticker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6"></path>
+        <path d="M9 13v.01"></path>
+        <path d="M15 13v.01"></path>
+        <path d="M10 17c.7.5 1.4.7 2 .7s1.3-.2 2-.7"></path>
+      </symbol>
+      <symbol id="icon-gif" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+        <path d="M9 9H6.5A1.5 1.5 0 0 0 5 10.5v3A1.5 1.5 0 0 0 6.5 15H9v-2.5H7.5"></path>
+        <path d="M12 9v6"></path>
+        <path d="M16 15v-6h3"></path>
+        <path d="M16 12h2"></path>
+      </symbol>
+      <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </symbol>
+      <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <line x1="10" y1="14" x2="21" y2="3"></line>
+      </symbol>
+      <symbol id="icon-dots-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>
+        <circle cx="12" cy="5" r="1.5" fill="currentColor"></circle>
+        <circle cx="12" cy="19" r="1.5" fill="currentColor"></circle>
+      </symbol>
+      <symbol id="icon-fullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+      </symbol>
+      <symbol id="icon-fullscreen-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 14h6m0 0v6m0-6l-7 7m17-11h-6m0 0V4m0 6l7-7M4 10h6m0 0V4m0 6L3 3m17 7h-6m0 0v6m0-6l7 7"></path>
+      </symbol>
+      <symbol id="icon-pip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+        <rect x="12" y="11" width="8" height="7" rx="1"></rect>
+      </symbol>
+      <symbol id="icon-forward-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4a8 8 0 0 1 7.89 6.7"></path>
+        <polyline points="20 4 20 10 14 10"></polyline>
+        <path d="M4.11 10.7A8 8 0 1 0 12 4"></path>
+        <text x="12" y="15" font-size="7" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="middle">10</text>
+      </symbol>
+      <symbol id="icon-replay-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4A8 8 0 0 0 4.11 10.7"></path>
+        <polyline points="4 4 4 10 10 10"></polyline>
+        <path d="M19.89 10.7A8 8 0 1 1 12 4"></path>
+        <text x="12" y="15" font-size="7" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="middle">10</text>
+      </symbol>
+      <symbol id="icon-volume-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      </symbol>
+      <symbol id="icon-speed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </symbol>
+      <symbol id="icon-poll" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </symbol>
+      <symbol id="icon-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+      </symbol>
+      <symbol id="icon-volume-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+        <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+        <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <div class="tools-backdrop" id="tools-backdrop"></div>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg class="ui-icon"><use href="#icon-logo"/></svg>
+        </div>
+        <div class="brand-text">
+          <h1>TGuserBOT</h1>
+          <p>控制台架构系统</p>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item active" data-view="dashboard">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-dashboard"/></svg></span>
+          <span>系统大盘</span>
+        </li>
+        <li class="nav-item" data-view="instances">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-instances"/></svg></span>
+          <span>实例托管</span>
+        </li>
+        <li class="nav-item" data-view="client">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-chat"/></svg></span>
+          <span>客户端操作</span>
+        </li>
+        <li class="nav-item" data-view="scheduler">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-calendar"/></svg></span>
+          <span>定时与自动重复</span>
+        </li>
+        <li class="nav-item" data-view="plugins">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-plugins"/></svg></span>
+          <span>插件中心</span>
+        </li>
+        <li class="nav-item" data-view="logs">
+          <span class="nav-icon"><svg class="ui-icon"><use href="#icon-terminal"/></svg></span>
+          <span>运行日志</span>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="sse-badge">
+          <span class="status-dot" id="sse-indicator"></span>
+          <span id="sse-text">实时连接正常</span>
+        </div>
+        <span class="version-tag">v0.2.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <main class="main-wrapper">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-left-wrap">
+          <button class="btn btn-secondary btn-icon mobile-only" id="btn-mobile-menu" title="打开导航菜单" aria-label="Menu">
+            <svg class="ui-icon"><use href="#icon-menu"/></svg>
+          </button>
+          <div class="header-title">
+            <h2 id="current-view-title">系统总览大盘</h2>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="btn-open-cache-settings" title="服务端缓存与性能管理">
+            <svg class="ui-icon"><use href="#icon-database"/></svg>
+            <span class="btn-text">缓存管理</span>
+          </button>
+          <button class="btn btn-primary" id="btn-open-create-inst">
+            <svg class="ui-icon"><use href="#icon-plus"/></svg>
+            <span class="btn-text">新建实例</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-start-all">
+            <svg class="ui-icon"><use href="#icon-play"/></svg>
+            <span class="btn-text">全部启动</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-stop-all">
+            <svg class="ui-icon"><use href="#icon-stop"/></svg>
+            <span class="btn-text">全部停止</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Views Container -->
+      <div class="views-container">
+        <!-- 1. Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>运行实例</span>
+                <svg class="metric-icon"><use href="#icon-server"/></svg>
+              </div>
+              <div class="metric-value" id="dash-inst-ratio">0 / 0</div>
+              <div class="metric-sub" id="dash-inst-sub">托管实例数</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>系统内存</span>
+                <svg class="metric-icon"><use href="#icon-ram"/></svg>
+              </div>
+              <div class="metric-value" id="dash-mem-percent">0%</div>
+              <div class="metric-sub" id="dash-mem-sub">0 MB / 0 MB</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>载入插件</span>
+                <svg class="metric-icon"><use href="#icon-plugins"/></svg>
+              </div>
+              <div class="metric-value" id="dash-plugins-count">0</div>
+              <div class="metric-sub">热重载就绪</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>系统运行时间</span>
+                <svg class="metric-icon"><use href="#icon-clock"/></svg>
+              </div>
+              <div class="metric-value" id="dash-sys-uptime">0m</div>
+              <div class="metric-sub" id="dash-sys-arch">-</div>
+            </div>
+          </div>
+
+          <div class="section-heading">
+            <h3>托管实例状态列表</h3>
+          </div>
+          <div class="cards-grid" id="dashboard-instances-grid">
+            <!-- Dynamic Instance Quick Cards -->
+          </div>
+        </section>
+
+        <!-- 2. Instances View -->
+        <section id="view-instances" class="view-section">
+          <div class="cards-grid" id="instances-full-grid">
+            <!-- Dynamic Instance Cards -->
+          </div>
+        </section>
+
+        <!-- 3. Plugins View -->
+        <section id="view-plugins" class="view-section">
+          <div class="filter-bar">
+            <div class="filter-controls">
+              <label class="filter-label">目标实例</label>
+              <select class="select-control" id="plugin-instance-select" style="min-width: 170px;">
+                <option value="default">Default Bot</option>
+              </select>
+              <div class="search-input-wrapper">
+                <svg class="search-icon"><use href="#icon-search"/></svg>
+                <input type="text" class="input-control search-input" id="plugin-search-input" placeholder="搜索插件...">
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-open-create-plugin">
+              <svg class="ui-icon"><use href="#icon-plus"/></svg>
+              <span>创建 / 安装插件</span>
+            </button>
+          </div>
+          <div class="cards-grid" id="plugins-grid">
+            <!-- Dynamic Plugin Cards -->
+          </div>
+        </section>
+
+        <!-- 4. Live Logs View -->
+        <section id="view-logs" class="view-section">
+          <div class="log-terminal">
+            <div class="terminal-toolbar">
+              <div class="terminal-controls">
+                <label class="filter-label">实例</label>
+                <select class="select-control" id="log-filter-instance">
+                  <option value="all">全部实例</option>
+                </select>
+
+                <label class="filter-label" style="margin-left: 10px;">级别</label>
+                <select class="select-control" id="log-filter-level">
+                  <option value="all">ALL</option>
+                  <option value="info">INFO</option>
+                  <option value="warn">WARN</option>
+                  <option value="error">ERROR</option>
+                </select>
+
+                <div class="search-input-wrapper" style="margin-left: 10px;">
+                  <svg class="search-icon"><use href="#icon-search"/></svg>
+                  <input type="text" class="input-control search-input" id="log-search-input" placeholder="检索日志...">
+                </div>
+              </div>
+              <div class="terminal-controls">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="log-auto-scroll" checked>
+                  <span>自动滚动</span>
+                </label>
+                <button class="btn btn-secondary btn-sm" id="btn-clear-logs">清空</button>
+              </div>
+            </div>
+            <div class="terminal-body" id="terminal-log-container">
+              <!-- Streaming Log Lines -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. Web Client View (像官方客户端一样操作账号 + 便捷功能) -->
+        <section id="view-client" class="view-section">
+          <!-- Account Selector & Status Bar -->
+          <div class="client-topbar">
+            <div class="client-topbar-left">
+              <label class="form-label" style="margin: 0; font-size: 13px;">选择账号:</label>
+              <select class="select-control" id="client-account-select" style="min-width: 130px;">
+                <option value="">加载中...</option>
+              </select>
+              <div class="client-account-badge" id="client-account-badge">
+                <span class="status-dot"></span>
+                <span id="client-account-name">未选择账号</span>
+              </div>
+            </div>
+            <div class="client-topbar-right">
+              <button class="btn btn-secondary btn-sm" id="btn-client-toggle-online" title="切换在线/隐身状态">
+                <svg class="ui-icon-sm"><use href="#icon-radio"/></svg>
+                <span id="client-online-text">设为隐身</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-client-open-profile" title="查看与修改账号资料">
+                <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
+                <span class="btn-text">修改资料</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-client-open-broadcast" title="群发广播消息">
+                <svg class="ui-icon-sm"><use href="#icon-broadcast"/></svg>
+                <span class="btn-text">消息群发</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-client-refresh-dialogs" title="刷新对话列表">
+                <svg class="ui-icon-sm"><use href="#icon-refresh"/></svg>
+                <span class="btn-text">刷新</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Client Main Layout (Three Columns with Telegram K/Z style) -->
+          <div class="client-layout">
+            <!-- Left: Dialogs Sidebar -->
+            <div class="client-dialogs-pane">
+              <div class="dialogs-header">
+                <div class="search-input-wrapper">
+                  <svg class="search-icon"><use href="#icon-search"/></svg>
+                  <input type="text" class="input-control search-input" id="client-dialogs-search" placeholder="搜索联系人、群聊...">
+                  <button type="button" class="btn-icon-subtle" id="btn-dialogs-mark-all-read" title="一键全部标记为已读"><svg class="ui-icon-xs"><use href="#icon-check"/></svg></button>
+                </div>
+                <div class="dialogs-tabs">
+                  <button class="dialog-tab active" data-type="all">全部</button>
+                  <button class="dialog-tab" data-type="unread" id="tab-unread">未读 <span class="tab-badge" id="badge-unread-total" style="display:none;">0</span></button>
+                  <button class="dialog-tab" data-type="private">私聊</button>
+                  <button class="dialog-tab" data-type="group">群组</button>
+                  <button class="dialog-tab" data-type="channel">频道</button>
+                  <button class="dialog-tab" data-type="bot">机器人</button>
+                </div>
+              </div>
+              <div class="dialogs-list" id="client-dialogs-list">
+                <div class="empty-state">请先启动或选择在线账号</div>
+              </div>
+            </div>
+
+            <!-- Center: Active Chat Room -->
+            <div class="client-chat-pane">
+              <!-- Chat Header -->
+              <div class="chat-header" id="client-chat-header">
+                <div class="chat-header-info">
+                  <button class="btn btn-secondary btn-sm btn-icon mobile-only" id="btn-client-back-dialogs" title="返回会话列表" style="margin-right: 6px;">
+                    <svg class="ui-icon"><use href="#icon-arrow-left"/></svg>
+                  </button>
+                  <div class="chat-avatar-wrap" id="client-chat-avatar-wrap" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; border-radius: 50%; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-subtle);">
+                    <img id="client-chat-avatar-img" class="chat-header-avatar-img" style="opacity: 0; width: 40px; height: 40px; max-width: 40px; max-height: 40px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0; transition: opacity 0.2s;" alt="Avatar" />
+                    <div class="chat-avatar" id="client-chat-avatar" style="width: 40px; height: 40px;">TG</div>
+                  </div>
+                  <div class="chat-title-wrap">
+                    <div class="chat-title" id="client-chat-title">请选择左侧会话</div>
+                    <div class="chat-subtitle" id="client-chat-subtitle">支持与联系人私聊、超级群组、广播频道实时收发</div>
+                  </div>
+                </div>
+                <div class="chat-header-actions" id="client-chat-actions" style="display: none;">
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-search-toggle" title="在当前聊天中搜索消息">
+                    <svg class="ui-icon-sm"><use href="#icon-search-chat"/></svg>
+                    <span class="btn-text">搜索</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-drawer-toggle" title="查看主页资料、动态与媒体">
+                    <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
+                    <span class="btn-text">资料/动态</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-theme-toggle" title="切换聊天壁纸与暗黑主题">
+                    <svg class="ui-icon-sm"><use href="#icon-palette"/></svg>
+                    <span class="btn-text">壁纸</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-mute-toggle" title="会话免打扰与静音">
+                    <svg class="ui-icon-sm"><use href="#icon-volume-off"/></svg>
+                    <span class="btn-text" id="chat-mute-status-text">免打扰</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-typing" title="发送 正在输入... 状态">
+                    <span>打字中...</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-purge" title="批量清理本会话消息">
+                    <svg class="ui-icon-sm"><use href="#icon-broom"/></svg>
+                    <span class="btn-text">撤回</span>
+                  </button>
+                  <button class="btn btn-danger btn-sm" id="btn-chat-leave" title="退出此群聊/频道">
+                    <svg class="ui-icon-sm"><use href="#icon-logout"/></svg>
+                    <span class="btn-text">退出</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Inline Chat Search Bar -->
+              <div class="chat-search-bar" id="chat-search-bar" style="display: none;">
+                <svg class="search-icon"><use href="#icon-search"/></svg>
+                <input type="text" class="input-control search-input" id="chat-search-input" placeholder="在当前会话中检索历史消息 (按 Enter 深度检索)...">
+                <button type="button" class="btn-icon-subtle" id="btn-chat-search-calendar" title="按日期快速跳转 (Jump to Date)"><svg class="ui-icon-xs"><use href="#icon-calendar"/></svg></button>
+                <span class="chat-search-stats" id="chat-search-stats" style="display: none; font-size: 12px; color: var(--text-muted); margin: 0 6px; white-space: nowrap;">0 / 0</span>
+                <button type="button" class="btn-icon-subtle" id="btn-chat-search-prev" title="上一个匹配项" style="display: none;"><svg class="ui-icon-xs"><use href="#icon-chevron-left"/></svg></button>
+                <button type="button" class="btn-icon-subtle" id="btn-chat-search-next" title="下一个匹配项" style="display: none;"><svg class="ui-icon-xs"><use href="#icon-chevron-right"/></svg></button>
+                <button type="button" class="btn-icon-subtle" id="btn-chat-search-close" title="关闭搜索"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+              </div>
+
+              <!-- Pinned Message Bar -->
+              <div class="chat-pinned-bar" id="chat-pinned-bar" style="display: none;">
+                <svg class="ui-icon-sm" style="color:var(--color-primary); flex-shrink: 0;"><use href="#icon-pin"/></svg>
+                <div class="pinned-text" id="chat-pinned-text">置顶消息</div>
+                <button class="btn-icon-subtle" id="btn-pinned-close" title="忽略"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+              </div>
+
+              <!-- Messages List -->
+              <div class="chat-messages-container" id="client-messages-container">
+                <div class="chat-placeholder">
+                  <svg class="placeholder-icon"><use href="#icon-chat"/></svg>
+                  <p>点击左侧联系人或群组开启实时会话</p>
+                </div>
+              </div>
+
+              <!-- Floating Multi-Selection Action Bar -->
+              <div class="chat-selection-bar" id="chat-selection-bar" style="display: none;">
+                <div class="selection-info">
+                  <button type="button" class="btn-icon-subtle" id="btn-cancel-selection" title="取消多选"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+                  <span id="selection-count-text">已选择 1 条消息</span>
+                </div>
+                <div class="selection-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-selection-forward" title="转发选中的消息">
+                    <svg class="ui-icon-sm"><use href="#icon-share"/></svg>
+                    <span>转发</span>
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" id="btn-selection-delete" title="批量删除选中的消息">
+                    <svg class="ui-icon-sm"><use href="#icon-trash"/></svg>
+                    <span>删除</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Message Input Bar -->
+              <div class="chat-input-bar" id="client-input-bar">
+                <!-- Voice Recording Overlay Bar -->
+                <div class="chat-voice-recording-bar" id="chat-voice-recording-bar" style="display: none;">
+                  <div class="rec-status-wrap">
+                    <span class="rec-dot"></span>
+                    <span class="rec-timer" id="voice-rec-timer">00:00</span>
+                  </div>
+                  <div class="rec-waveform">
+                    <span class="rec-bar"></span>
+                    <span class="rec-bar"></span>
+                    <span class="rec-bar"></span>
+                    <span class="rec-bar"></span>
+                    <span class="rec-bar"></span>
+                    <span class="rec-bar"></span>
+                  </div>
+                  <div class="rec-actions">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-cancel-voice-rec" title="放弃录音">放弃</button>
+                    <button type="button" class="btn btn-primary btn-xs" id="btn-send-voice-rec" title="发送语音消息">
+                      <svg class="ui-icon-xs"><use href="#icon-send"/></svg>
+                      <span>发送语音</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Replying banner -->
+                <div class="chat-reply-banner" id="chat-reply-banner" style="display: none;">
+                  <svg class="ui-icon-sm" style="color:var(--color-primary); flex-shrink: 0;"><use href="#icon-reply"/></svg>
+                  <div class="reply-banner-content">
+                    <span class="reply-banner-sender" id="reply-banner-sender">回复 用户</span>
+                    <span class="reply-banner-text" id="reply-banner-text">消息内容...</span>
+                  </div>
+                  <button class="btn-icon-subtle" id="btn-cancel-reply" title="取消回复"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+                </div>
+
+                <!-- Editing banner -->
+                <div class="chat-reply-banner chat-edit-banner" id="chat-edit-banner" style="display: none;">
+                  <svg class="ui-icon-sm" style="color:var(--color-primary); flex-shrink: 0;"><use href="#icon-edit"/></svg>
+                  <div class="reply-banner-content">
+                    <span class="reply-banner-sender">编辑消息</span>
+                    <span class="reply-banner-text" id="edit-banner-text">原内容...</span>
+                  </div>
+                  <button class="btn-icon-subtle" id="btn-cancel-edit" title="取消编辑"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+                </div>
+
+                <!-- Drag & Drop / Staged Attachment Chip Strip -->
+                <div class="chat-attachment-strip" id="chat-attachment-strip" style="display: none;">
+                  <div class="attachment-chip" id="attachment-chip">
+                    <svg class="ui-icon-sm attachment-chip-icon"><use href="#icon-file"/></svg>
+                    <span class="attachment-chip-name" id="attachment-chip-name">filename.ext</span>
+                    <span class="attachment-chip-size" id="attachment-chip-size">(1.2 MB)</span>
+                    <button type="button" class="btn-icon-subtle attachment-chip-del" id="btn-cancel-attachment" title="移除附件"><svg class="ui-icon-xs"><use href="#icon-close"/></svg></button>
+                  </div>
+                </div>
+
+                <!-- Main Input Field Row -->
+                <div class="chat-input-field-wrap">
+                  <!-- Left: Stacked paperclip icon above emoji icon -->
+                  <div class="chat-input-side-actions">
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-attach" title="选择附件并发送 (图片、音频、文件)">
+                      <svg class="ui-icon"><use href="#icon-attach"/></svg>
+                    </button>
+                    <input type="file" id="chat-file-input" style="display: none;">
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-poll" title="创建投票与问卷">
+                      <svg class="ui-icon"><use href="#icon-poll"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn chat-expr-btn" id="btn-chat-expression-toggle" title="表情、贴纸与 GIF (TG桌面端面板)">
+                      <svg class="ui-icon"><use href="#icon-smile"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Center: Textarea with active status tags -->
+                  <div class="chat-input-center-wrap">
+                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="输入消息内容... (支持富文本与文件拖入，右键调出功能菜单)" rows="1"></textarea>
+                    <div class="chat-input-badges" id="chat-input-badges">
+                      <span class="chat-badge-pill" id="badge-silent" style="display: none;" title="当前已开启静默发送">
+                        <svg class="ui-icon-xs" style="width:10px;height:10px;"><use href="#icon-broadcast"/></svg> 静默发送
+                      </span>
+                      <span class="chat-badge-pill" id="badge-parsemode" style="display: none;" title="当前消息解析模式">HTML 模式</span>
+                      <span class="chat-badge-pill" id="badge-sendmode" style="display: none;" title="当前发送快捷键">Ctrl+Enter 发送</span>
+                    </div>
+                  </div>
+
+                  <!-- Right: One-Click Menu Button + Voice Button + Send Button -->
+                  <div class="chat-input-right-actions">
+                    <button type="button" class="btn-icon-subtle chat-more-btn" id="btn-chat-more-menu" title="一键菜单与发送设置 (或右键输入框)">
+                      <svg class="ui-icon"><use href="#icon-dots-vertical"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn chat-voice-btn" id="btn-client-voice-record" title="录制语音消息">
+                      <svg class="ui-icon"><use href="#icon-microphone"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送消息 (Schedule Message)">
+                      <svg class="ui-icon"><use href="#icon-clock"/></svg>
+                    </button>
+                    <button class="btn btn-primary btn-chat-send" id="btn-client-send-msg" title="发送消息">
+                      <svg class="ui-icon"><use href="#icon-send"/></svg>
+                      <span>发送</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Miuix Chat Context & Quick Menu Popover -->
+                <div class="miuix-context-menu" id="chat-context-menu" style="display: none;">
+                  <div class="menu-header">
+                    <span class="menu-title">快捷工具与设置</span>
+                    <span class="menu-hint">支持右键与快捷键</span>
+                  </div>
+
+                  <!-- Formatting Quick Actions -->
+                  <div class="menu-fmt-grid">
+                    <button type="button" class="fmt-pill" data-fmt="bold" title="加粗 (Ctrl+B)"><b>B</b> 加粗</button>
+                    <button type="button" class="fmt-pill" data-fmt="italic" title="斜体 (Ctrl+I)"><i>I</i> 斜体</button>
+                    <button type="button" class="fmt-pill" data-fmt="underline" title="下划线 (Ctrl+U)"><u>U</u> 下划线</button>
+                    <button type="button" class="fmt-pill" data-fmt="strike" title="删除线"><s>S</s> 删除线</button>
+                    <button type="button" class="fmt-pill" data-fmt="code" title="行内代码">&lt;/&gt; 代码</button>
+                    <button type="button" class="fmt-pill" data-fmt="spoiler" title="剧透隐藏">|| 剧透</button>
+                    <button type="button" class="fmt-pill" data-fmt="link" title="插入超链接 (Ctrl+K)">
+                      <svg class="ui-icon-xs" style="width:11px;height:11px;vertical-align:middle;"><use href="#icon-link"/></svg> 链接
+                    </button>
+                  </div>
+
+                  <div class="menu-divider"></div>
+
+                  <!-- Settings: Silent Send Switch -->
+                  <div class="menu-row menu-toggle-row" id="row-toggle-silent">
+                    <div class="menu-row-info">
+                      <span class="menu-row-title">静默发送</span>
+                      <span class="menu-row-desc">对方接收时不响铃、不震动</span>
+                    </div>
+                    <div class="mi-switch" id="mi-switch-silent">
+                      <div class="mi-switch-thumb"></div>
+                    </div>
+                  </div>
+
+                  <div class="menu-divider"></div>
+
+                  <!-- Settings: Parse Mode Segmented Pills -->
+                  <div class="menu-row-block">
+                    <span class="menu-row-label">消息解析模式</span>
+                    <div class="menu-seg-pills" id="seg-parsemode">
+                      <button type="button" class="seg-item active" data-val="markdown">Markdown</button>
+                      <button type="button" class="seg-item" data-val="html">HTML</button>
+                      <button type="button" class="seg-item" data-val="plain">纯文本</button>
+                    </div>
+                  </div>
+
+                  <!-- Settings: Send Key Mode Segmented Pills -->
+                  <div class="menu-row-block">
+                    <span class="menu-row-label">发送快捷键</span>
+                    <div class="menu-seg-pills" id="seg-sendmode">
+                      <button type="button" class="seg-item active" data-val="enter">Enter 发送</button>
+                      <button type="button" class="seg-item" data-val="ctrlEnter">Ctrl+Enter 发送</button>
+                    </div>
+                  </div>
+
+                  <div class="menu-divider"></div>
+
+                  <!-- Quick Action: Clear -->
+                  <div class="menu-action-item" id="menu-btn-clear-input">
+                    <svg class="ui-icon-sm" style="color: var(--color-danger);"><use href="#icon-trash"/></svg>
+                    <span style="color: var(--color-danger);">清空输入框内容</span>
+                    <span class="menu-key-hint">Esc</span>
+                  </div>
+                </div>
+
+                <!-- Hidden inputs for backward compatibility -->
+                <input type="checkbox" id="client-input-silent" style="display: none;">
+                <select id="client-input-parsemode" style="display: none;">
+                  <option value="markdown" selected>Markdown</option>
+                  <option value="html">HTML</option>
+                  <option value="plain">纯文本</option>
+                </select>
+                <select id="client-input-sendmode" style="display: none;">
+                  <option value="enter">Enter</option>
+                  <option value="ctrlEnter">Ctrl+Enter</option>
+                </select>
+                <span id="client-input-hint" style="display: none;"></span>
+              </div>
+            </div>
+
+            <!-- Right: Telegram Profile, Stories, Shared Media & Tools Drawer -->
+            <div class="client-drawer" id="client-drawer">
+              <div class="drawer-header">
+                <div class="drawer-tabs">
+                  <button class="drawer-tab active" data-tab="profile" id="tab-btn-profile">资料/动态</button>
+                  <button class="drawer-tab" data-tab="members" id="tab-btn-members" style="display: none;">成员 (0)</button>
+                  <button class="drawer-tab" data-tab="media" id="tab-btn-media">共享媒体</button>
+                  <button class="drawer-tab" data-tab="tools" id="tab-btn-tools">便捷箱</button>
+                </div>
+                <button class="btn-icon-subtle" id="btn-close-drawer" title="收起抽屉">
+                  <svg class="ui-icon"><use href="#icon-close"/></svg>
+                </button>
+              </div>
+
+              <!-- Drawer Tab 1: Profile & Stories -->
+              <div class="drawer-pane active" id="drawer-tab-profile">
+                <!-- Multi-Avatar Hero Slider -->
+                <div class="profile-hero-card">
+                  <div class="profile-slider-wrap">
+                    <button class="slider-nav-btn prev" id="btn-profile-photo-prev" title="上一张头像"><svg class="ui-icon-sm"><use href="#icon-chevron-left"/></svg></button>
+                    <div class="profile-avatar-display" id="profile-avatar-display">
+                      <img id="profile-hero-img" class="profile-hero-img" style="display: none;" alt="Profile" />
+                      <div class="profile-hero-placeholder" id="profile-hero-placeholder">TG</div>
+                    </div>
+                    <button class="slider-nav-btn next" id="btn-profile-photo-next" title="下一张头像"><svg class="ui-icon-sm"><use href="#icon-chevron-right"/></svg></button>
+                    <div class="slider-counter-badge" id="profile-photo-counter" style="display: none;">1 / 1</div>
+                  </div>
+                  <div class="profile-meta-text">
+                    <h3 class="profile-display-name" id="profile-display-name">选择会话查看主页</h3>
+                    <div class="profile-username" id="profile-username">@username</div>
+                    <div class="profile-status-badge" id="profile-status-badge">离线</div>
+                  </div>
+                </div>
+
+                <div class="profile-info-list">
+                  <div class="profile-info-item" id="profile-item-bio">
+                    <div class="profile-info-label">个人简介 / 说明 (Bio)</div>
+                    <div class="profile-info-val" id="profile-val-bio">暂无简介说明</div>
+                  </div>
+                  <div class="profile-info-item" id="profile-item-phone" style="display: none;">
+                    <div class="profile-info-label">电话号码 (Phone)</div>
+                    <div class="profile-info-val" id="profile-val-phone">+1...</div>
+                  </div>
+                  <div class="profile-info-item">
+                    <div class="profile-info-label">用户/实体唯一 ID</div>
+                    <div class="profile-info-val" id="profile-val-id">--</div>
+                  </div>
+                  <div class="profile-info-item" id="profile-item-members" style="display: none;">
+                    <div class="profile-info-label">群组成员数</div>
+                    <div class="profile-info-val" id="profile-val-members">0</div>
+                  </div>
+                </div>
+
+                <!-- Peer Stories Section -->
+                <div class="profile-stories-section">
+                  <div class="section-title-row">
+                    <div class="section-title">
+                      <svg class="ui-icon-sm"><use href="#icon-story"/></svg>
+                      <span>主页动态 (Stories)</span>
+                    </div>
+                    <span class="section-tag" id="profile-stories-count">0</span>
+                  </div>
+                  <div class="stories-scroll-wrap" id="profile-stories-container">
+                    <div class="empty-hint">暂无活跃动态发布</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Drawer Tab: Group & Channel Members -->
+              <div class="drawer-pane" id="drawer-tab-members" style="display: none;">
+                <div class="members-header-bar">
+                  <div class="members-search-wrap">
+                    <svg class="ui-icon-xs search-icon"><use href="#icon-search"/></svg>
+                    <input type="text" class="input-control input-sm" id="member-search-input" placeholder="按昵称或用户名搜索成员...">
+                  </div>
+                  <button class="btn-icon-subtle" id="btn-refresh-members" title="刷新成员列表"><svg class="ui-icon-xs"><use href="#icon-refresh"/></svg></button>
+                </div>
+                <div class="members-list-body" id="members-list-container">
+                  <div class="empty-hint">加载成员列表中...</div>
+                </div>
+              </div>
+
+              <!-- Drawer Tab 2: Shared Media -->
+              <div class="drawer-pane" id="drawer-tab-media" style="display: none;">
+                <div class="shared-media-subtabs">
+                  <button class="shared-subtab active" data-type="photos">图片</button>
+                  <button class="shared-subtab" data-type="videos">视频</button>
+                  <button class="shared-subtab" data-type="files">文件</button>
+                  <button class="shared-subtab" data-type="music">音乐</button>
+                </div>
+                <div class="shared-media-content" id="shared-media-container">
+                  <div class="empty-hint">选择会话后可查看共享媒体</div>
+                </div>
+              </div>
+
+              <!-- Drawer Tab 3: Convenience Toolbox -->
+              <div class="drawer-pane" id="drawer-tab-tools" style="display: none;">
+                <div class="tools-body">
+                  <!-- Tool: Quick Purge -->
+                  <div class="tool-card">
+                    <div class="tool-title">
+                      <svg class="ui-icon-sm"><use href="#icon-broom"/></svg>
+                      <span>一键会话消息清理</span>
+                    </div>
+                    <p class="tool-desc">快速撤回并双向删除当前聊天窗口最近的历史消息。</p>
+                    <div class="tool-actions-row">
+                      <button class="btn btn-secondary btn-xs btn-quick-purge" data-count="5">撤回 5 条</button>
+                      <button class="btn btn-secondary btn-xs btn-quick-purge" data-count="15">撤回 15 条</button>
+                      <button class="btn btn-secondary btn-xs btn-quick-purge" data-count="50">撤回 50 条</button>
+                    </div>
+                  </div>
+
+                  <!-- Tool: Peer Lookup -->
+                  <div class="tool-card">
+                    <div class="tool-title">
+                      <svg class="ui-icon-sm"><use href="#icon-search"/></svg>
+                      <span>对象/用户深度查询</span>
+                    </div>
+                    <p class="tool-desc">输入 @用户名 或数字 ID 快速解析对象信息与权限。</p>
+                    <div class="tool-inline-input">
+                      <input type="text" class="input-control input-sm" id="tool-lookup-input" placeholder="@durov 或 用户ID">
+                      <button class="btn btn-secondary btn-sm" id="btn-tool-lookup">查询</button>
+                    </div>
+                    <div class="tool-result-box" id="tool-lookup-result" style="display: none;"></div>
+                  </div>
+
+                  <!-- Tool: Presence & Typing -->
+                  <div class="tool-card">
+                    <div class="tool-title">
+                      <svg class="ui-icon-sm"><use href="#icon-radio"/></svg>
+                      <span>在线与交互仿真</span>
+                    </div>
+                    <p class="tool-desc">仿真真实客户端在线交互状态与打字提示动作。</p>
+                    <div class="tool-actions-row">
+                      <button class="btn btn-secondary btn-xs" id="btn-quick-online">设为在线</button>
+                      <button class="btn btn-secondary btn-xs" id="btn-quick-offline">设为隐身</button>
+                      <button class="btn btn-secondary btn-xs" id="btn-quick-typing">当前会话打字</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Telegram Expression / Stickers / GIFs Drawer (Telegram PC Desktop Style) -->
+            <div class="client-drawer client-expression-drawer" id="client-expression-drawer" style="display: none;">
+              <div class="drawer-header">
+                <div class="drawer-tabs">
+                  <button class="drawer-tab active" data-tab="emoji" id="tab-btn-expr-emoji">
+                    <svg class="ui-icon-xs"><use href="#icon-smile"/></svg>
+                    <span>Emoji</span>
+                  </button>
+                  <button class="drawer-tab" data-tab="stickers" id="tab-btn-expr-stickers">
+                    <svg class="ui-icon-xs"><use href="#icon-sticker"/></svg>
+                    <span>表情包</span>
+                  </button>
+                  <button class="drawer-tab" data-tab="gifs" id="tab-btn-expr-gifs">
+                    <svg class="ui-icon-xs"><use href="#icon-gif"/></svg>
+                    <span>动图 GIF</span>
+                  </button>
+                </div>
+                <button class="btn-icon-subtle" id="btn-close-expression-drawer" title="关闭表情栏">
+                  <svg class="ui-icon"><use href="#icon-close"/></svg>
+                </button>
+              </div>
+
+              <!-- Expression Tab 1: Emoji Picker -->
+              <div class="drawer-pane expr-pane active" id="drawer-tab-emoji">
+                <div class="emoji-picker-container">
+                  <div class="emoji-category-bar" id="emoji-category-bar">
+                    <button class="emoji-cat-btn active" data-cat="smileys" title="表情与情感">😀</button>
+                    <button class="emoji-cat-btn" data-cat="gestures" title="手势与人物">👍</button>
+                    <button class="emoji-cat-btn" data-cat="animals" title="动物与自然">🐱</button>
+                    <button class="emoji-cat-btn" data-cat="food" title="食物与饮品">🍔</button>
+                    <button class="emoji-cat-btn" data-cat="activities" title="运动与活动">⚽</button>
+                    <button class="emoji-cat-btn" data-cat="travel" title="旅行与交通">✈️</button>
+                    <button class="emoji-cat-btn" data-cat="objects" title="物品与生活">💡</button>
+                    <button class="emoji-cat-btn" data-cat="symbols" title="符号与标识">❤️</button>
+                    <button class="emoji-cat-btn" data-cat="flags" title="旗帜">🏁</button>
+                  </div>
+                  <div class="expr-search-box">
+                    <svg class="search-icon-sm"><use href="#icon-search"/></svg>
+                    <input type="text" class="input-control input-xs" id="emoji-search-input" placeholder="搜索 Emoji...">
+                  </div>
+                  <div class="emoji-grid" id="emoji-grid">
+                    <!-- Populated by JavaScript -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expression Tab 2: Telegram Native Stickers -->
+              <div class="drawer-pane expr-pane" id="drawer-tab-stickers" style="display: none;">
+                <div class="stickers-wrapper">
+                  <div class="expr-search-box">
+                    <svg class="search-icon-sm"><use href="#icon-search"/></svg>
+                    <input type="text" class="input-control input-xs" id="stickers-search-input" placeholder="在安装的表情包中过滤...">
+                  </div>
+                  <div class="stickers-stream" id="stickers-stream-container">
+                    <div class="empty-hint">正在加载 Telegram 表情包...</div>
+                  </div>
+                  <!-- Bottom Sticker Pack Switcher (Telegram Desktop PC Style) -->
+                  <div class="stickers-bottom-bar" id="stickers-bottom-switcher">
+                    <!-- Populated by JavaScript with pack icon thumbnails -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Expression Tab 3: Telegram Saved GIFs -->
+              <div class="drawer-pane expr-pane" id="drawer-tab-gifs" style="display: none;">
+                <div class="gifs-wrapper">
+                  <div class="gifs-stream" id="gifs-stream-container">
+                    <div class="empty-hint">正在获取收藏的 GIF 动图...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <!-- 6. Scheduler View (自动重复与指定时间定时消息调度) -->
+        <section id="view-scheduler" class="view-section">
+          <!-- Top Clock & Actions Bar -->
+          <div class="client-topbar scheduler-topbar">
+            <div class="client-topbar-left">
+              <label class="form-label" style="margin: 0; font-size: 13px;">选择账号:</label>
+              <select class="select-control" id="scheduler-account-select" style="min-width: 130px;">
+                <option value="">加载中...</option>
+              </select>
+              <div class="server-clock-tag">
+                <svg class="ui-icon-sm"><use href="#icon-clock"/></svg>
+                <span>服务器时间: </span>
+                <b id="scheduler-server-time">--:--:--</b>
+              </div>
+            </div>
+            <div class="client-topbar-right">
+              <button class="btn btn-primary btn-sm" id="btn-open-create-schedule">
+                <svg class="ui-icon-sm"><use href="#icon-plus"/></svg>
+                <span class="btn-text">新建定时任务</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-schedules">
+                <svg class="ui-icon-sm"><use href="#icon-refresh"/></svg>
+                <span class="btn-text">刷新</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scheduler Stats Cards -->
+          <div class="scheduler-stats-grid">
+            <div class="sched-stat-card">
+              <div class="sched-stat-title">已配置任务</div>
+              <div class="sched-stat-val" id="sched-stat-total">0</div>
+              <div class="sched-stat-sub">调度任务总数</div>
+            </div>
+            <div class="sched-stat-card">
+              <div class="sched-stat-title">运行启用中</div>
+              <div class="sched-stat-val running" id="sched-stat-enabled">0</div>
+              <div class="sched-stat-sub">常驻自动触发</div>
+            </div>
+            <div class="sched-stat-card">
+              <div class="sched-stat-title">每日固定时间</div>
+              <div class="sched-stat-val" id="sched-stat-daily">0</div>
+              <div class="sched-stat-sub">按服务器时间发送</div>
+            </div>
+            <div class="sched-stat-card">
+              <div class="sched-stat-title">循环重复广播</div>
+              <div class="sched-stat-val" id="sched-stat-repeat">0</div>
+              <div class="sched-stat-sub">间隔自动循环</div>
+            </div>
+          </div>
+
+          <!-- Schedule Tasks Table -->
+          <div class="scheduler-content-wrap">
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 70px;">任务 ID</th>
+                    <th style="width: 160px;">目标会话</th>
+                    <th style="width: 240px;">重复策略 / 触发时间</th>
+                    <th>消息内容</th>
+                    <th style="width: 180px;">下次触发倒计时</th>
+                    <th style="width: 90px;">状态</th>
+                    <th style="width: 180px; text-align: right;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="scheduler-tasks-tbody">
+                  <tr>
+                    <td colspan="7" class="table-empty">正在加载调度任务...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Telegram Interactive Login -->
+  <div class="modal-overlay" id="modal-auth">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="auth-modal-title">Telegram 身份认证</h3>
+        <button class="modal-close" id="btn-close-auth"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" id="auth-hint">
+          实例需要 Telegram 登录验证，请根据提示完成信息录入。
+        </p>
+
+        <!-- Step: Phone -->
+        <div class="form-group" id="auth-group-phone">
+          <label class="form-label">国际格式手机号 (例: +8613800000000)</label>
+          <input type="text" class="form-input" id="auth-input-phone" placeholder="+86...">
+        </div>
+
+        <!-- Step: Code -->
+        <div class="form-group" id="auth-group-code" style="display: none;">
+          <label class="form-label">Telegram 验证码 (请在 Telegram 客户端查看)</label>
+          <input type="text" class="form-input" id="auth-input-code" placeholder="12345">
+        </div>
+
+        <!-- Step: 2FA Password -->
+        <div class="form-group" id="auth-group-password" style="display: none;">
+          <label class="form-label">两步验证密码 (2FA Password)</label>
+          <input type="password" class="form-input" id="auth-input-password" placeholder="无密码可直接提交">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-auth">取消</button>
+        <button class="btn btn-primary" id="btn-submit-auth">提交验证</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create / Edit Instance -->
+  <div class="modal-overlay" id="modal-instance">
+    <div class="modal-window" style="width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="inst-modal-title">新建实例配置</h3>
+        <button class="modal-close" id="btn-close-inst"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">实例唯一标识 (ID)*</label>
+            <input type="text" class="form-input" id="inst-input-id" placeholder="bot_2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">显示名称 (Name)*</label>
+            <input type="text" class="form-input" id="inst-input-name" placeholder="副账号">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">TG_API_ID* (my.telegram.org)</label>
+            <input type="number" class="form-input" id="inst-input-api-id" placeholder="123456">
+          </div>
+          <div class="form-group">
+            <label class="form-label">TG_OWNER_ID* (Telegram 数字 ID)</label>
+            <input type="number" class="form-input" id="inst-input-owner-id" placeholder="99999999">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">TG_API_HASH* (my.telegram.org)</label>
+          <input type="text" class="form-input" id="inst-input-api-hash" placeholder="32位十六进制字符串">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">指令前缀 (逗号分隔，默认 .,/)</label>
+          <input type="text" class="form-input" id="inst-input-prefixes" value=".,/">
+        </div>
+
+        <div class="proxy-box">
+          <div class="proxy-header">
+            <svg class="ui-icon-sm"><use href="#icon-network"/></svg>
+            <span>网络代理配置 (可选，推荐 SOCKS5)</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px;">
+            <select class="select-control" id="inst-proxy-type">
+              <option value="none">无代理</option>
+              <option value="socks5">SOCKS5</option>
+              <option value="mtproxy">MTProxy</option>
+            </select>
+            <input type="text" class="form-input" id="inst-proxy-host" placeholder="主机 (如 127.0.0.1)">
+            <input type="number" class="form-input" id="inst-proxy-port" placeholder="端口 (如 10808)">
+          </div>
+        </div>
+
+        <div class="checkbox-wrapper">
+          <input type="checkbox" id="inst-input-autostart" checked>
+          <label for="inst-input-autostart" class="checkbox-text">系统启动时自动运行此实例</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-inst">取消</button>
+        <button class="btn btn-primary" id="btn-save-inst">保存实例</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Plugin -->
+  <div class="modal-overlay" id="modal-create-plugin">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title">新建插件模块</h3>
+        <button class="modal-close" id="btn-close-create-plugin"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">插件名称 (英文标识，例如: stats)*</label>
+          <input type="text" class="form-input" id="plugin-input-name" placeholder="stats">
+        </div>
+        <div class="form-group">
+          <label class="form-label">版本号</label>
+          <input type="text" class="form-input" id="plugin-input-version" value="1.0.0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">描述说明</label>
+          <input type="text" class="form-input" id="plugin-input-desc" placeholder="功能简要说明...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">入口代码 (index.js)</label>
+          <textarea class="form-textarea" id="plugin-input-code" placeholder="留空将自动生成标准插件模板代码..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-create-plugin">取消</button>
+        <button class="btn btn-primary" id="btn-save-create-plugin">创建并安装</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Plugin Config Editor -->
+  <div class="modal-overlay" id="modal-plugin-config">
+    <div class="modal-window" style="width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="plugin-config-title">插件配置管理</h3>
+        <button class="modal-close" id="btn-close-plugin-config"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          编辑持久化于 SQLite <code>plugin_state</code> 表中的配置项 (JSON 格式)：
+        </p>
+        <textarea class="form-textarea" id="plugin-config-json" style="min-height: 220px; font-family: var(--font-mono);"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-plugin-config">取消</button>
+        <button class="btn btn-primary" id="btn-save-plugin-config">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Schedule Task -->
+  <div class="modal-overlay" id="modal-create-schedule">
+    <div class="modal-window" style="width: 620px;">
+      <div class="modal-header">
+        <h3 class="modal-title">新建定时与自动重复广播任务</h3>
+        <button class="modal-close" id="btn-close-create-schedule"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">目标会话 (Chat ID 或 @频道公开名)*</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" class="form-input" id="sched-input-chat" placeholder="例如: -100123456789 或 @my_channel" style="flex: 1;">
+            <select class="select-control" id="sched-quick-chat-select" style="max-width: 190px;">
+              <option value="">快捷选择最近对话...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Repeat Mode Selector -->
+        <div class="form-group">
+          <label class="form-label">重复策略与执行时刻*</label>
+          <div class="repeat-mode-cards">
+            <label class="repeat-mode-card active" data-mode="daily">
+              <input type="radio" name="sched-mode" value="daily" checked style="display: none;">
+              <div class="card-icon"><svg class="ui-icon"><use href="#icon-calendar"/></svg></div>
+              <div class="card-text">
+                <div class="card-title">每天固定时刻重复</div>
+                <div class="card-desc">指定服务器时间每天准时发送 (如凌晨0点01分)</div>
+              </div>
+            </label>
+
+            <label class="repeat-mode-card" data-mode="interval">
+              <input type="radio" name="sched-mode" value="interval" style="display: none;">
+              <div class="card-icon"><svg class="ui-icon"><use href="#icon-refresh"/></svg></div>
+              <div class="card-text">
+                <div class="card-title">周期循环间隔</div>
+                <div class="card-desc">每隔特定分钟或小时持续循环发送</div>
+              </div>
+            </label>
+
+            <label class="repeat-mode-card" data-mode="once">
+              <input type="radio" name="sched-mode" value="once" style="display: none;">
+              <div class="card-icon"><svg class="ui-icon"><use href="#icon-clock"/></svg></div>
+              <div class="card-text">
+                <div class="card-title">单次定时发送</div>
+                <div class="card-desc">仅在指定延时后发送一次，不循环</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Mode Form: Daily Specific Time -->
+        <div class="sched-subform" id="sched-form-daily">
+          <label class="form-label">每日指定发送时间 (24小时制 HH:mm)</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="time" class="form-input" id="sched-input-daily-time" value="00:01" style="width: 160px; font-size: 16px; font-weight: 600; text-align: center;">
+            <div class="time-preset-chips">
+              <span class="preset-chip active" data-time="00:01">00:01 凌晨</span>
+              <span class="preset-chip" data-time="08:30">08:30 早间</span>
+              <span class="preset-chip" data-time="12:00">12:00 正午</span>
+              <span class="preset-chip" data-time="20:00">20:00 晚间</span>
+              <span class="preset-chip" data-time="23:59">23:59 深夜</span>
+            </div>
+          </div>
+          <div class="sched-preview-box" id="sched-daily-preview-box">
+            <svg class="ui-icon-sm" style="color: var(--color-primary);"><use href="#icon-check"/></svg>
+            <span id="sched-daily-preview-text">将于服务器时间每天 00:01 准时发送</span>
+          </div>
+        </div>
+
+        <!-- Mode Form: Interval -->
+        <div class="sched-subform" id="sched-form-interval" style="display: none;">
+          <label class="form-label">循环周期时长</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="number" class="form-input" id="sched-input-interval-val" value="30" min="5" style="width: 120px;">
+            <select class="select-control" id="sched-input-interval-unit" style="width: 120px;">
+              <option value="s">秒 (Seconds)</option>
+              <option value="m" selected>分钟 (Minutes)</option>
+              <option value="h">小时 (Hours)</option>
+              <option value="d">天 (Days)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Mode Form: Once -->
+        <div class="sched-subform" id="sched-form-once" style="display: none;">
+          <label class="form-label">延时发送时长</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="number" class="form-input" id="sched-input-once-val" value="10" min="1" style="width: 120px;">
+            <select class="select-control" id="sched-input-once-unit" style="width: 120px;">
+              <option value="m" selected>分钟后发送</option>
+              <option value="h">小时后发送</option>
+              <option value="d">天后发送</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">消息正文内容*</label>
+          <textarea class="form-textarea" id="sched-input-content" placeholder="输入要定时广播的文本内容 (支持 HTML/Markdown 标记)..." style="min-height: 90px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-create-schedule">取消</button>
+        <button class="btn btn-primary" id="btn-save-create-schedule">创建定时任务</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Profile Editor -->
+  <div class="modal-overlay" id="modal-profile">
+    <div class="modal-window" style="width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">账号资料与个人名片</h3>
+        <button class="modal-close" id="btn-close-profile"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-summary-box">
+          <div class="profile-avatar-large" id="profile-avatar-large">TG</div>
+          <div class="profile-summary-details">
+            <h4 id="profile-display-name">--</h4>
+            <p id="profile-display-username">@--</p>
+            <div class="profile-tags">
+              <span class="profile-tag" id="profile-display-id">ID: --</span>
+              <span class="profile-tag" id="profile-display-phone">Phone: --</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+          <div class="form-group">
+            <label class="form-label">名 (First Name)*</label>
+            <input type="text" class="form-input" id="profile-input-firstname" placeholder="名">
+          </div>
+          <div class="form-group">
+            <label class="form-label">姓 (Last Name)</label>
+            <input type="text" class="form-input" id="profile-input-lastname" placeholder="姓 (可选)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">个人简介 (Bio / About - 最多70字)</label>
+          <textarea class="form-textarea" id="profile-input-bio" maxlength="70" placeholder="关于自己的简要说明..." style="min-height: 70px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-profile">取消</button>
+        <button class="btn btn-primary" id="btn-save-profile">保存修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Broadcast Multi-Send -->
+  <div class="modal-overlay" id="modal-broadcast">
+    <div class="modal-window" style="width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title">批量消息群发 / 广播</h3>
+        <button class="modal-close" id="btn-close-broadcast"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">目标会话列表 (支持多行或以逗号分隔的 Chat ID / 群ID)*</label>
+          <textarea class="form-textarea" id="broadcast-input-targets" placeholder="-100123456789&#10;-100987654321&#10;12345678" style="min-height: 80px; font-family: var(--font-mono); font-size: 13px;"></textarea>
+          <button class="btn btn-secondary btn-xs" id="btn-broadcast-import-recent" style="margin-top: 6px;">一键导入所有最近群聊与私聊</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">广播文本内容*</label>
+          <textarea class="form-textarea" id="broadcast-input-text" placeholder="输入广播消息正文..." style="min-height: 90px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">发送频率间隔 (毫秒，默认 800ms 防止风控)</label>
+          <input type="number" class="form-input" id="broadcast-input-interval" value="800" min="300" style="width: 140px;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-broadcast">取消</button>
+        <button class="btn btn-primary" id="btn-submit-broadcast">开始批量群发</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Jump to Date Calendar Picker -->
+  <div class="modal-overlay" id="modal-jump-date" style="display: none;">
+    <div class="modal-window modal-jump-card" style="width: 380px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-calendar"/></svg>
+          <span class="modal-title">跳转到指定历史日期</span>
+        </div>
+        <button class="modal-close" id="btn-jump-date-close" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body jump-date-body">
+        <div class="form-group">
+          <label class="form-label">选择目标日期</label>
+          <input type="date" class="form-input" id="jump-date-input">
+        </div>
+        <div class="jump-date-presets">
+          <span class="preset-pill" data-days="1">昨天</span>
+          <span class="preset-pill" data-days="3">3天前</span>
+          <span class="preset-pill" data-days="7">1周前</span>
+          <span class="preset-pill" data-days="30">1个月前</span>
+          <span class="preset-pill" data-days="90">3个月前</span>
+          <span class="preset-pill" data-days="365">1年前</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-jump-date-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-jump-date-confirm">
+          <svg class="ui-icon-sm"><use href="#icon-search"/></svg>
+          <span>定位历史消息</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Schedule Message Dialog -->
+  <div class="modal-overlay" id="modal-schedule-message" style="display: none;">
+    <div class="modal-window modal-schedule-card" style="width: 420px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-clock"/></svg>
+          <span class="modal-title">定时发送消息</span>
+        </div>
+        <button class="modal-close" id="btn-schedule-close" title="取消"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body schedule-modal-body">
+        <div class="schedule-presets-grid">
+          <button type="button" class="schedule-preset-btn" data-minutes="10">
+            <span class="preset-time">10 分钟后</span>
+            <span class="preset-label">稍后提醒</span>
+          </button>
+          <button type="button" class="schedule-preset-btn" data-minutes="60">
+            <span class="preset-time">1 小时后</span>
+            <span class="preset-label">稍晚投递</span>
+          </button>
+          <button type="button" class="schedule-preset-btn" data-preset="tonight">
+            <span class="preset-time">今晚 21:00</span>
+            <span class="preset-label">晚间总结</span>
+          </button>
+          <button type="button" class="schedule-preset-btn" data-preset="tomorrow">
+            <span class="preset-time">明天 09:00</span>
+            <span class="preset-label">晨间早报</span>
+          </button>
+        </div>
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+          <label class="form-label">或自定义发送日期与时间</label>
+          <input type="datetime-local" class="form-input" id="schedule-datetime-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-schedule-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-schedule-confirm">
+          <svg class="ui-icon-sm"><use href="#icon-send"/></svg>
+          <span>确定定时发送</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Floating Music Player Dock -->
+  <div class="music-player-dock" id="global-music-player" style="display: none;">
+    <div class="music-info-wrap">
+      <div class="music-disc-icon" id="music-disc-icon">
+        <svg class="ui-icon"><use href="#icon-music"/></svg>
+      </div>
+      <div class="music-text-meta">
+        <div class="music-title" id="music-title">曲目名称</div>
+        <div class="music-artist" id="music-artist">歌手 / 来源会话</div>
+      </div>
+    </div>
+    <div class="music-controls-wrap">
+      <button class="music-btn" id="btn-music-prev" title="上一曲"><svg class="ui-icon-sm"><use href="#icon-skip-back"/></svg></button>
+      <button class="music-btn play-pause" id="btn-music-play-pause" title="播放/暂停"><svg class="ui-icon"><use href="#icon-play"/></svg></button>
+      <button class="music-btn" id="btn-music-next" title="下一曲"><svg class="ui-icon-sm"><use href="#icon-skip-next"/></svg></button>
+      <div class="music-time-slider-wrap">
+        <span class="music-time" id="music-current-time">0:00</span>
+        <input type="range" class="music-seek-bar" id="music-seek-bar" min="0" max="100" value="0">
+        <span class="music-time" id="music-duration">0:00</span>
+      </div>
+    </div>
+    <div class="music-extra-wrap">
+      <div class="music-volume-wrap">
+        <svg class="ui-icon-sm" style="color:var(--text-muted);"><use href="#icon-volume"/></svg>
+        <input type="range" class="music-volume-bar" id="music-volume-bar" min="0" max="100" value="80" title="音量调节">
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-music-playlist-toggle" title="展开/收起播放列表">
+        <svg class="ui-icon-sm"><use href="#icon-playlist"/></svg>
+        <span id="music-playlist-count">歌单 (0)</span>
+      </button>
+      <button class="btn-icon-subtle" id="btn-music-close" title="关闭播放器"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Music Playlist Slide-up Drawer -->
+  <div class="playlist-drawer" id="music-playlist-drawer">
+    <div class="playlist-header">
+      <h3>当前播放列表</h3>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-secondary btn-xs" id="btn-playlist-import-chat">导入当前会话音频</button>
+        <button class="btn-icon-subtle" id="btn-playlist-close" title="收起列表"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
+      </div>
+    </div>
+    <div class="playlist-search-wrap">
+      <input type="text" class="input-control input-sm" id="playlist-search-input" placeholder="在歌单中搜索曲目...">
+    </div>
+    <div class="playlist-body" id="playlist-body">
+      <div class="empty-state">播放列表中暂无音频，可在聊天中点击音频消息加入</div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Photo Lightbox Modal -->
+  <div class="lightbox-overlay" id="modal-lightbox">
+    <div class="lightbox-toolbar">
+      <span class="lightbox-title" id="lightbox-title">图片查看</span>
+      <div class="lightbox-actions">
+        <button class="lightbox-btn" id="btn-lightbox-rotate" title="顺时针旋转 90°"><svg class="ui-icon"><use href="#icon-rotate"/></svg></button>
+        <a class="lightbox-btn" id="btn-lightbox-download" title="下载原图" target="_blank" download><svg class="ui-icon"><use href="#icon-download"/></svg></a>
+        <button class="lightbox-btn" id="btn-lightbox-close" title="关闭 (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+    </div>
+    <div class="lightbox-content" id="lightbox-content">
+      <button class="lightbox-nav-btn prev" id="btn-lightbox-prev" title="上一张 (←)"><svg class="ui-icon"><use href="#icon-chevron-left"/></svg></button>
+      <img class="lightbox-img" id="lightbox-img" src="" alt="Photo preview">
+      <button class="lightbox-nav-btn next" id="btn-lightbox-next" title="下一张 (→)"><svg class="ui-icon"><use href="#icon-chevron-right"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Cinema-Grade Video Player Lightbox Modal -->
+  <div class="video-cinema-overlay" id="modal-video-player" style="display: none;">
+    <!-- Top Floating Header Bar -->
+    <div class="video-cinema-topbar" id="video-cinema-topbar">
+      <div class="video-cinema-meta">
+        <span class="video-cinema-sender" id="video-cinema-sender">视频播放</span>
+        <span class="video-cinema-time" id="video-cinema-time"></span>
+      </div>
+      <div class="video-cinema-top-actions">
+        <button class="video-cinema-icon-btn" id="btn-video-pip" title="画中画 (P)"><svg class="ui-icon"><use href="#icon-pip"/></svg></button>
+        <a class="video-cinema-icon-btn" id="btn-video-download" title="下载原视频" target="_blank" download><svg class="ui-icon"><use href="#icon-download"/></svg></a>
+        <button class="video-cinema-icon-btn" id="btn-video-close" title="关闭 (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Center Stage / Video Viewport -->
+    <div class="video-cinema-viewport" id="video-cinema-viewport">
+      <video class="video-cinema-element" id="video-cinema-element" preload="auto" playsinline></video>
+      <!-- Center Feedback Ripple Badge (Play/Pause/Rewind/Forward Indicator) -->
+      <div class="video-center-indicator" id="video-center-indicator">
+        <svg class="ui-icon-lg"><use href="#icon-play"/></svg>
+      </div>
+      <div class="video-seek-ripple left" id="video-ripple-left">
+        <svg class="ui-icon"><use href="#icon-replay-10"/></svg>
+        <span>-10s</span>
+      </div>
+      <div class="video-seek-ripple right" id="video-ripple-right">
+        <svg class="ui-icon"><use href="#icon-forward-10"/></svg>
+        <span>+10s</span>
+      </div>
+    </div>
+
+    <!-- Bottom Floating Dark Glass Cinema Control Dock -->
+    <div class="video-cinema-dock" id="video-cinema-dock">
+      <!-- High-Precision Timeline & Scrubber -->
+      <div class="video-timeline-wrap" id="video-timeline-wrap">
+        <div class="video-timeline-rail">
+          <div class="video-buffered-fill" id="video-buffered-fill"></div>
+          <div class="video-progress-fill" id="video-progress-fill"></div>
+          <div class="video-scrubber-thumb" id="video-scrubber-thumb"></div>
+        </div>
+        <!-- Hover Timestamp Tooltip -->
+        <div class="video-time-tooltip" id="video-time-tooltip">00:00</div>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="video-dock-controls">
+        <div class="video-dock-left">
+          <button class="video-ctrl-btn" id="btn-video-rw" title="快退 10 秒 (J / ←)">
+            <svg class="ui-icon"><use href="#icon-replay-10"/></svg>
+          </button>
+          <button class="video-ctrl-btn play-pause" id="btn-video-play-pause" title="播放 / 暂停 (Space / K)">
+            <svg class="ui-icon"><use href="#icon-play"/></svg>
+          </button>
+          <button class="video-ctrl-btn" id="btn-video-ff" title="快进 10 秒 (L / →)">
+            <svg class="ui-icon"><use href="#icon-forward-10"/></svg>
+          </button>
+          <div class="video-time-display">
+            <span id="video-cur-time">0:00</span>
+            <span class="video-time-sep">/</span>
+            <span id="video-total-time">0:00</span>
+          </div>
+        </div>
+
+        <div class="video-dock-right">
+          <!-- Volume Controls -->
+          <div class="video-volume-group">
+            <button class="video-ctrl-btn-subtle" id="btn-video-volume" title="静音 / 恢复 (M)">
+              <svg class="ui-icon-sm" id="video-vol-icon"><use href="#icon-volume"/></svg>
+            </button>
+            <div class="video-vol-slider-wrap" id="video-vol-slider-wrap">
+              <div class="video-vol-rail">
+                <div class="video-vol-fill" id="video-vol-fill" style="width: 100%;"></div>
+                <div class="video-vol-thumb" id="video-vol-thumb" style="left: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Speed Popover Trigger -->
+          <div class="video-speed-menu-wrap" id="video-speed-menu-wrap">
+            <button class="video-speed-badge" id="btn-video-speed" title="播放倍速">1.0x</button>
+            <div class="video-speed-popover" id="video-speed-popover">
+              <div class="speed-opt" data-speed="0.5">0.5x</div>
+              <div class="speed-opt" data-speed="0.75">0.75x</div>
+              <div class="speed-opt active" data-speed="1.0">1.0x (正常)</div>
+              <div class="speed-opt" data-speed="1.25">1.25x</div>
+              <div class="speed-opt" data-speed="1.5">1.5x</div>
+              <div class="speed-opt" data-speed="2.0">2.0x</div>
+            </div>
+          </div>
+
+          <!-- Fullscreen Toggle -->
+          <button class="video-ctrl-btn" id="btn-video-fullscreen" title="全屏 (F)">
+            <svg class="ui-icon"><use href="#icon-fullscreen"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Direct Clipboard Image Paste & Caption Modal -->
+  <div class="modal-overlay" id="modal-paste-image" style="display: none;">
+    <div class="modal-window modal-paste-card" style="width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-photo"/></svg>
+          <span class="modal-title">发送剪贴板图片</span>
+        </div>
+        <button class="modal-close" id="btn-paste-image-close" title="取消"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body paste-image-body">
+        <div class="paste-image-preview-wrap">
+          <img id="paste-image-preview" src="" alt="Pasted Image">
+          <div class="paste-image-info" id="paste-image-info">加载中...</div>
+        </div>
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+          <label class="form-label">图片描述 / Caption (支持 Markdown 富文本)</label>
+          <textarea class="form-textarea" id="paste-image-caption" placeholder="添加图片描述... (支持 **加粗**, *斜体*, `代码`, [链接](url))" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-paste-image-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-paste-image-send">
+          <svg class="ui-icon-sm"><use href="#icon-send"/></svg>
+          <span>发送图片</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticker Pack Preview & Install/Uninstall Modal -->
+  <div class="modal-overlay" id="modal-sticker-pack" style="display: none;">
+    <div class="modal-window modal-sticker-pack-card" style="width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-title" id="sticker-pack-modal-title">表情包详情</span>
+          <span class="badge" id="sticker-pack-modal-badge">未安装</span>
+        </div>
+        <button class="modal-close" id="btn-sticker-pack-close" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body sticker-pack-modal-body">
+        <div class="sticker-pack-meta-header">
+          <div class="sticker-pack-info">
+            <h3 class="sticker-pack-name" id="sticker-pack-name">贴纸包名称</h3>
+            <div class="sticker-pack-subtext" id="sticker-pack-subtext">@pack_short_name · 0 个表情</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-sticker-pack-action">
+            <svg class="ui-icon-sm"><use href="#icon-plus"/></svg>
+            <span>添加到我的表情</span>
+          </button>
+        </div>
+        <div class="sticker-pack-grid" id="sticker-pack-grid">
+          <!-- stickers rendered here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Miuix Hyperlink Insertion -->
+  <div class="modal-overlay" id="modal-insert-link" style="display: none;">
+    <div class="modal-window mi-modal-window" style="width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-link"/></svg>
+          <span class="modal-title">插入超链接</span>
+        </div>
+        <button class="modal-close" id="btn-insert-link-close" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="link-text-input">链接文本</label>
+          <input type="text" class="input-control" id="link-text-input" placeholder="显示的文字 (如: 官方频道)">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="link-url-input">链接地址 (URL)</label>
+          <input type="url" class="input-control" id="link-url-input" placeholder="https://t.me/...">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" id="btn-insert-link-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-insert-link-confirm">
+          <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
+          <span>插入</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Cache & Performance Settings -->
+  <div class="modal-overlay" id="modal-cache-settings" style="display: none;">
+    <div class="modal-window" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon"><use href="#icon-database"/></svg>
+          <h3>服务端代理与持久缓存控制</h3>
+        </div>
+        <button class="modal-close" id="btn-close-cache-settings" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="cache-stat-banner">
+          <div class="cache-stat-usage">
+            <span class="cache-stat-num" id="cache-used-text">0 MB</span>
+            <span class="cache-stat-max" id="cache-max-text">/ 5120 MB (5.0 GB)</span>
+          </div>
+          <div class="cache-progress-bar">
+            <div class="cache-progress-fill" id="cache-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div class="cache-stat-meta">
+            <span>已缓存文件: <b id="cache-file-count">0</b> 个</span>
+            <span>内存会话索引: <b id="cache-mem-dialogs">0</b></span>
+            <span>消息队列快照: <b id="cache-mem-chats">0</b></span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label class="form-label" style="margin: 0;">缓存容量上限调整</label>
+            <span class="cache-limit-display" id="cache-limit-label">5120 MB (5.0 GB)</span>
+          </div>
+          <input type="range" class="miuix-slider" id="cache-limit-slider" min="500" max="20480" step="256" value="5120">
+          <div class="cache-presets">
+            <button class="preset-pill" data-mb="1024">1 GB</button>
+            <button class="preset-pill" data-mb="2048">2 GB</button>
+            <button class="preset-pill active" data-mb="5120">5 GB (默认)</button>
+            <button class="preset-pill" data-mb="10240">10 GB</button>
+            <button class="preset-pill" data-mb="20480">20 GB</button>
+          </div>
+          <p class="form-hint" style="margin-top: 10px;">支持对 Telegram 头像、缩略图、消息高速缓存进行磁盘和内存级代理。达到上限时按 LRU 算法自动淘汰最旧数据。</p>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-danger btn-sm" id="btn-clear-cache">
+          <svg class="ui-icon-sm"><use href="#icon-broom"/></svg>
+          <span>立即清除全部缓存</span>
+        </button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" id="btn-cancel-cache-settings">关闭</button>
+          <button class="btn btn-primary" id="btn-save-cache-settings">
+            <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
+            <span>保存设置</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transparent Backdrop to prevent background touch through -->
+  <div class="menu-backdrop" id="menu-backdrop" style="display: none;"></div>
+
+  <!-- Message Context Menu (Miuix Squircle Floating Menu) -->
+  <div class="miuix-msg-menu" id="msg-context-menu" style="display: none;">
+    <div class="msg-reaction-bar" id="msg-context-reactions">
+      <button class="reaction-pill" data-reaction="❤️" title="爱心">❤️</button>
+      <button class="reaction-pill" data-reaction="👍" title="赞">👍</button>
+      <button class="reaction-pill" data-reaction="👎" title="踩">👎</button>
+      <button class="reaction-pill" data-reaction="😂" title="笑哭">😂</button>
+      <button class="reaction-pill" data-reaction="🔥" title="着火">🔥</button>
+      <button class="reaction-pill" data-reaction="🎉" title="庆祝">🎉</button>
+    </div>
+    <div class="msg-menu-divider"></div>
+    <div class="msg-menu-list">
+      <button class="msg-menu-item" id="menu-action-reply">
+        <svg class="ui-icon-sm"><use href="#icon-reply"/></svg>
+        <span>回复</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-forward">
+        <svg class="ui-icon-sm"><use href="#icon-share"/></svg>
+        <span>转发</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-copy">
+        <svg class="ui-icon-sm"><use href="#icon-copy"/></svg>
+        <span>复制文字</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-translate">
+        <svg class="ui-icon-sm"><use href="#icon-tools"/></svg>
+        <span>翻译消息</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-pin">
+        <svg class="ui-icon-sm"><use href="#icon-pin"/></svg>
+        <span id="menu-action-pin-text">置顶此消息</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-edit" style="display: none;">
+        <svg class="ui-icon-sm"><use href="#icon-edit"/></svg>
+        <span>编辑消息</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-select">
+        <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
+        <span>多选</span>
+      </button>
+      <div class="msg-menu-divider"></div>
+      <button class="msg-menu-item danger" id="menu-action-delete">
+        <svg class="ui-icon-sm"><use href="#icon-trash"/></svg>
+        <span>删除 / 撤回</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Telegram Message Forwarding Dialog -->
+  <div class="modal-overlay" id="modal-forward-message" style="display: none;">
+    <div class="modal-window forward-modal-window" style="width: 440px; max-width: 92vw; border-radius: var(--radius-xl);">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-share"/></svg>
+          <span class="modal-title">转发消息至...</span>
+        </div>
+        <button class="modal-close" id="btn-close-forward-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body forward-modal-body" style="padding: 12px 16px;">
+        <div class="search-input-wrapper" style="margin-bottom: 12px;">
+          <svg class="search-icon"><use href="#icon-search"/></svg>
+          <input type="text" class="input-control search-input" id="forward-dialogs-search" placeholder="搜索会话名称或用户名...">
+        </div>
+        <div class="forward-dialogs-list" id="forward-dialogs-list" style="max-height: 380px; overflow-y: auto;">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Poll / Quiz -->
+  <div class="modal-overlay" id="modal-create-poll" style="display: none;">
+    <div class="modal-window mi-modal-window" style="width: 480px; max-width: 95vw;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-poll"/></svg>
+          <span class="modal-title">新建原生投票 / 测验</span>
+        </div>
+        <button class="modal-close" id="btn-close-poll-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">投票问题 / 测验题目 <span style="color:var(--color-danger)">*</span></label>
+          <input type="text" class="input-control" id="poll-question-input" placeholder="输入提问内容 (如: 明晚聚餐地点投票？)">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin: 0;">选项列表 (最少 2 项，最多 10 项)</label>
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-add-poll-option">
+              <svg class="ui-icon-xs"><use href="#icon-plus"/></svg>
+              <span>增加选项</span>
+            </button>
+          </div>
+          <div class="poll-options-builder" id="poll-options-builder" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Option items with quiz correct radio -->
+          </div>
+        </div>
+
+        <div class="poll-settings-box" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <label class="checkbox-label" style="font-size: 13px;">
+            <input type="checkbox" id="poll-anonymous-input" checked>
+            <span>匿名投票 (隐藏投票人真实身份)</span>
+          </label>
+          <label class="checkbox-label" style="font-size: 13px;">
+            <input type="checkbox" id="poll-multiple-input">
+            <span>允许多选 (可投多个选项)</span>
+          </label>
+          <label class="checkbox-label" style="font-size: 13px;">
+            <input type="checkbox" id="poll-quiz-input">
+            <span>测验模式 (指定唯一正确答案与解释，不可多选)</span>
+          </label>
+        </div>
+
+        <div class="form-group" id="poll-quiz-solution-wrap" style="display: none; margin-top: 14px;">
+          <label class="form-label">测验解析说明 (答错或点击灯泡时展示)</label>
+          <input type="text" class="input-control" id="poll-solution-input" placeholder="选填: 如官方标准解析或参考资料链接">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" id="btn-cancel-poll">取消</button>
+        <button class="btn btn-primary" id="btn-submit-poll">
+          <svg class="ui-icon-sm"><use href="#icon-send"/></svg>
+          <span>立即发布</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chat Wallpaper & Theme Switcher -->
+  <div class="modal-overlay" id="modal-chat-theme" style="display: none;">
+    <div class="modal-window mi-modal-window" style="width: 440px; max-width: 92vw;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-palette"/></svg>
+          <span class="modal-title">聊天壁纸与视觉风格</span>
+        </div>
+        <button class="modal-close" id="btn-close-theme-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <div class="theme-picker-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          <div class="theme-card active" data-theme="obsidian">
+            <div class="theme-preview theme-preview-obsidian"></div>
+            <div class="theme-meta">
+              <span class="theme-name">极客黑曜石 (Obsidian)</span>
+              <span class="theme-desc">深邃纯粹黑底与极简磨砂</span>
+            </div>
+          </div>
+          <div class="theme-card" data-theme="doodle">
+            <div class="theme-preview theme-preview-doodle"></div>
+            <div class="theme-meta">
+              <span class="theme-name">TG经典涂鸦 (Doodle)</span>
+              <span class="theme-desc">Telegram官方矢量图腾纹理</span>
+            </div>
+          </div>
+          <div class="theme-card" data-theme="neon">
+            <div class="theme-preview theme-preview-neon"></div>
+            <div class="theme-meta">
+              <span class="theme-name">赛博霓虹 (Cyber Neon)</span>
+              <span class="theme-desc">蓝紫电光弥散流光溢彩</span>
+            </div>
+          </div>
+          <div class="theme-card" data-theme="aurora">
+            <div class="theme-preview theme-preview-aurora"></div>
+            <div class="theme-meta">
+              <span class="theme-name">极光幽绿 (Aurora)</span>
+              <span class="theme-desc">幽深翡翠流光高端质感</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chat Mute & Notifications -->
+  <div class="modal-overlay" id="modal-chat-mute" style="display: none;">
+    <div class="modal-window mi-modal-window" style="width: 380px; max-width: 90vw;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-warning);"><use href="#icon-volume-off"/></svg>
+          <span class="modal-title">会话静音与免打扰</span>
+        </div>
+        <button class="modal-close" id="btn-close-mute-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn btn-secondary mute-option-btn" data-mute-duration="3600" style="justify-content: flex-start; text-align: left; padding: 12px 14px;">
+          <span>静音 1 小时</span>
+        </button>
+        <button class="btn btn-secondary mute-option-btn" data-mute-duration="28800" style="justify-content: flex-start; text-align: left; padding: 12px 14px;">
+          <span>静音 8 小时</span>
+        </button>
+        <button class="btn btn-secondary mute-option-btn" data-mute-duration="172800" style="justify-content: flex-start; text-align: left; padding: 12px 14px;">
+          <span>静音 2 天</span>
+        </button>
+        <button class="btn btn-secondary mute-option-btn" data-mute-duration="forever" style="justify-content: flex-start; text-align: left; padding: 12px 14px;">
+          <span style="color: var(--color-danger);">永久静音</span>
+        </button>
+        <button class="btn btn-secondary mute-option-btn" data-mute-duration="unmute" style="justify-content: flex-start; text-align: left; padding: 12px 14px;">
+          <span style="color: var(--color-primary);">恢复提醒 (取消静音)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js?v=14"></script>
+</body>
+</html>

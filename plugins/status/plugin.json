@@ -1,0 +1,7 @@
+{
+  "name": "status",
+  "version": "1.0.0",
+  "description": "个人在线状态管理与资料修改工具 (在线/隐身/打字/名字/简介/头像)",
+  "entry": "index.js"
+}
+

@@ -1,0 +1,7 @@
+{
+  "name": "schedule",
+  "version": "1.0.0",
+  "description": "定时与自动循环消息发送调度器 (支持自定义间隔与重启自动持久化恢复)",
+  "entry": "index.js"
+}
+

@@ -1,0 +1,6 @@
+{
+  "name": "echo",
+  "version": "1.0.0",
+  "description": "复读回显消息工具",
+  "entry": "index.js"
+}

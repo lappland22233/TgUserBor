@@ -1,0 +1,6 @@
+{
+  "name": "afk",
+  "version": "1.0.0",
+  "description": "离开挂机自动回复与提及消息摘要汇总",
+  "entry": "index.js"
+}

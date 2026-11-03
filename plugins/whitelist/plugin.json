@@ -1,0 +1,7 @@
+{
+  "name": "whitelist",
+  "version": "1.0.0",
+  "description": "命令监听用户白名单管理 (仅限主人)",
+  "entry": "index.js"
+}
+

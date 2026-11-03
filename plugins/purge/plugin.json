@@ -1,0 +1,6 @@
+{
+  "name": "purge",
+  "version": "1.0.0",
+  "description": "快速消息删除与批量清理工具",
+  "entry": "index.js"
+}

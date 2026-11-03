@@ -1,0 +1,7 @@
+{
+  "name": "sticker",
+  "version": "1.0.0",
+  "description": "Telegram 贴纸包查询、贴纸转换与提取工具",
+  "entry": "index.js"
+}
+

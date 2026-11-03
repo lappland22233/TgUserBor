@@ -1,0 +1,7 @@
+{
+  "name": "history",
+  "version": "1.0.0",
+  "description": "对话历史消息搜索与指定消息提取工具",
+  "entry": "index.js"
+}
+

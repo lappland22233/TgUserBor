@@ -1,0 +1,6 @@
+{
+  "name": "system",
+  "version": "1.0.0",
+  "description": "系统状态诊断、网络延迟测试及进程重启管理",
+  "entry": "index.js"
+}

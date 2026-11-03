@@ -1,0 +1,7 @@
+{
+  "name": "media",
+  "version": "1.0.0",
+  "description": "媒体收发、文件下载、消息置顶与转发工具",
+  "entry": "index.js"
+}
+

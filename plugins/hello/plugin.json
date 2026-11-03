@@ -1,0 +1,6 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "description": "友好问候命令与自定义问候语配置",
+  "entry": "index.js"
+}

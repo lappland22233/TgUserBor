@@ -1,0 +1,6 @@
+{
+  "name": "help",
+  "version": "1.0.0",
+  "description": "交互式命令帮助与功能浏览中心",
+  "entry": "index.js"
+}

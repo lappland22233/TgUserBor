@@ -1,0 +1,7 @@
+{
+  "name": "note",
+  "version": "1.0.0",
+  "description": "跨对话云端便签与快捷回复管理器 (基于 SQLite 持久化)",
+  "entry": "index.js"
+}
+

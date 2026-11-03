@@ -1,0 +1,7 @@
+{
+  "name": "reaction",
+  "version": "1.0.0",
+  "description": "快捷 Telegram 消息表情反应交互工具 (支持自定义 Emoji)",
+  "entry": "index.js"
+}
+

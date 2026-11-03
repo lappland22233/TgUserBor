@@ -1,0 +1,45 @@
+{
+  "name": "tguserbot-framework",
+  "version": "0.1.0",
+  "description": "A TypeScript MTProto-based Telegram userbot framework with plugin system, command parser, permission control, and SQLite persistence.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "tgbot": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "node node_modules/typescript/bin/tsc -p tsconfig.json && node -e \"const fs=require('fs'); fs.rmSync('dist/gui/web', {recursive: true, force: true}); fs.cpSync('src/gui/web', 'dist/gui/web', {recursive: true});\"",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node dist/index.js",
+    "gui": "node dist/gui/server.js",
+    "clean": "rimraf dist data/sessions",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit"
+  },
+  "keywords": [
+    "telegram",
+    "userbot",
+    "mtproto",
+    "framework",
+    "plugin",
+    "typescript"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.1",
+    "dotenv": "^16.4.5",
+    "pino": "^9.4.0",
+    "telegram": "^2.26.22",
+    "teleproto": "^1.229.0",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/ws": "^8.18.2",
+    "rimraf": "^6.0.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.2"
+  }
+}

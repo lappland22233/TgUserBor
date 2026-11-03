@@ -1,0 +1,22 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+*.tsbuildinfo
+tguserbot-release.zip
+
+# 运行时数据（会话、日志、数据库、实例配置）
+data/
+
+# 环境与密钥
+.env
+
+# IDE / 编辑器 / 工具状态
+.commandcode/
+.codebuddy/
+.idea/
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db

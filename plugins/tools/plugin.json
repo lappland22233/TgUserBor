@@ -1,0 +1,6 @@
+{
+  "name": "tools",
+  "version": "1.0.0",
+  "description": "实用日常工具箱：.id、.calc、.time、.tr",
+  "entry": "index.js"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "contacts",
+  "version": "1.0.0",
+  "description": "Telegram 对话列表、联系人名录与详细信息查看工具",
+  "entry": "index.js"
+}
+
