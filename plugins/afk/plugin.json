@@ -2,5 +2,50 @@
   "name": "afk",
   "version": "1.0.0",
   "description": "离开挂机自动回复与提及消息摘要汇总",
-  "entry": "index.js"
+  "entry": "index.js",
+  "configSchema": [
+    {
+      "key": "reason",
+      "label": "离开原因",
+      "type": "string",
+      "description": "显示给其他用户的离开原因",
+      "default": "",
+      "placeholder": "例如：暂时离开，请稍后联系",
+      "group": "AFK 状态"
+    },
+    {
+      "key": "autoReply",
+      "label": "自动回复",
+      "type": "boolean",
+      "description": "AFK 期间被私聊时自动回复",
+      "default": true,
+      "group": "AFK 状态"
+    },
+    {
+      "key": "replyText",
+      "label": "自动回复内容",
+      "type": "textarea",
+      "description": "AFK 期间的自动回复文本",
+      "default": "我现在不在，稍后回复你。",
+      "group": "AFK 状态"
+    },
+    {
+      "key": "mentionDigest",
+      "label": "提及摘要",
+      "type": "boolean",
+      "description": "AFK 期间被提及时，结束 AFK 后汇总提醒",
+      "default": true,
+      "group": "通知设置"
+    },
+    {
+      "key": "digestInterval",
+      "label": "摘要间隔 (分钟)",
+      "type": "number",
+      "description": "多少分钟内合并汇总提醒消息",
+      "default": 30,
+      "min": 5,
+      "max": 1440,
+      "group": "通知设置"
+    }
+  ]
 }

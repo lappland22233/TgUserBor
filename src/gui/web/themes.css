@@ -1,0 +1,221 @@
+/* ==========================================================================
+   TGuserBOT Dual-Theme Token Layer (Light / Dark)
+   Semantic tokens only — no component styles here.
+   ========================================================================== */
+
+:root,
+[data-theme="dark"] {
+  /* ---- Surfaces ---- */
+  --bg-app: #0c0f14;
+  --bg-sidebar: rgba(18, 23, 31, 0.8);
+  --bg-header: rgba(18, 23, 31, 0.88);
+  --bg-card: rgba(22, 28, 38, 0.78);
+  --bg-card-hover: rgba(28, 36, 49, 0.9);
+  --bg-subtle: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(12, 16, 23, 0.85);
+
+  /* ---- Borders ---- */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.16);
+  --border-focus: #007aff;
+
+  /* ---- Text ---- */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-faint: #475569;
+
+  /* ---- Brand Palette ---- */
+  --color-primary: #007aff;
+  --color-primary-hover: #0066d6;
+  --color-primary-subtle: rgba(0, 122, 255, 0.15);
+
+  --color-accent: #ff6900;
+  --color-success: #34c759;
+  --color-success-bg: rgba(52, 199, 89, 0.12);
+  --color-success-border: rgba(52, 199, 89, 0.3);
+
+  --color-warning: #ff9500;
+  --color-warning-bg: rgba(255, 149, 0, 0.12);
+  --color-warning-border: rgba(255, 149, 0, 0.3);
+
+  --color-danger: #ff3b30;
+  --color-danger-bg: rgba(255, 59, 48, 0.12);
+  --color-danger-border: rgba(255, 59, 48, 0.3);
+
+  /* ---- Shadows ---- */
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+  /* ---- Telegram Chat Bubbles ---- */
+  --tg-out-bg: #3E6D8E;
+  --tg-out-text: #FFFFFF;
+  --tg-in-bg: #1E2A36;
+  --tg-in-text: #E8ECF1;
+  --tg-tick: rgba(255, 255, 255, 0.55);
+  --tg-tick-read: #6DC16D;
+
+  /* ---- Telegram Chat Chrome ---- */
+  --tg-date-sep-bg: rgba(0, 0, 0, 0.35);
+  --tg-date-sep-text: rgba(255, 255, 255, 0.85);
+  --tg-service-bg: rgba(0, 0, 0, 0.3);
+  --tg-service-text: rgba(255, 255, 255, 0.75);
+  --tg-badge-bg: #007aff;
+  --tg-badge-text: #FFFFFF;
+  --tg-online-dot: #34c759;
+  --tg-link: #4FA7F5;
+  --tg-wallpaper: linear-gradient(135deg, #0e1621 0%, #17212b 50%, #0e1621 100%);
+  --tg-pinned-bar-bg: rgba(0, 122, 255, 0.1);
+  --tg-unread-sep-bg: rgba(0, 122, 255, 0.12);
+  --tg-unread-sep-text: #4FA7F5;
+
+  /* ---- Scrollbar ---- */
+  --tg-scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --tg-scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --tg-scrollbar-track: transparent;
+
+  /* ---- Spoiler ---- */
+  --tg-spoiler-bg: rgba(255, 255, 255, 0.12);
+
+  /* ---- Typing dots ---- */
+  --tg-typing-color: var(--color-primary);
+
+  /* ---- Selection ---- */
+  --selection-bg: rgba(0, 122, 255, 0.35);
+}
+
+[data-theme="light"] {
+  /* ---- Surfaces ---- */
+  --bg-app: #FFFFFF;
+  --bg-sidebar: rgba(255, 255, 255, 0.92);
+  --bg-header: rgba(255, 255, 255, 0.96);
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(245, 246, 250, 0.98);
+  --bg-subtle: rgba(0, 0, 0, 0.04);
+  --bg-input: #FFFFFF;
+
+  /* ---- Borders ---- */
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.16);
+  --border-focus: #007aff;
+
+  /* ---- Text ---- */
+  --text-primary: #1A1A2E;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-faint: #D1D5DB;
+
+  /* ---- Brand Palette ---- */
+  --color-primary: #007aff;
+  --color-primary-hover: #005ECB;
+  --color-primary-subtle: rgba(0, 122, 255, 0.1);
+
+  --color-accent: #FF6900;
+  --color-success: #30B052;
+  --color-success-bg: rgba(48, 176, 82, 0.1);
+  --color-success-border: rgba(48, 176, 82, 0.3);
+
+  --color-warning: #E8960D;
+  --color-warning-bg: rgba(232, 150, 13, 0.1);
+  --color-warning-border: rgba(232, 150, 13, 0.3);
+
+  --color-danger: #E53935;
+  --color-danger-bg: rgba(229, 57, 53, 0.1);
+  --color-danger-border: rgba(229, 57, 53, 0.3);
+
+  /* ---- Shadows ---- */
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08);
+
+  /* ---- Telegram Chat Bubbles (Official Light Theme) ---- */
+  --tg-out-bg: #EFFDDE;
+  --tg-out-text: #000000;
+  --tg-in-bg: #FFFFFF;
+  --tg-in-text: #000000;
+  --tg-tick: #A1AAB3;
+  --tg-tick-read: #4FAE4E;
+
+  /* ---- Telegram Chat Chrome ---- */
+  --tg-date-sep-bg: rgba(0, 0, 0, 0.28);
+  --tg-date-sep-text: #FFFFFF;
+  --tg-service-bg: rgba(0, 0, 0, 0.3);
+  --tg-service-text: #FFFFFF;
+  --tg-badge-bg: #3390EC;
+  --tg-badge-text: #FFFFFF;
+  --tg-online-dot: #30B052;
+  --tg-link: #3390EC;
+  --tg-wallpaper: linear-gradient(135deg, #E8E0D8 0%, #D4C5B0 50%, #E8D5C0 100%);
+  --tg-pinned-bar-bg: rgba(51, 144, 236, 0.08);
+  --tg-unread-sep-bg: rgba(51, 144, 236, 0.1);
+  --tg-unread-sep-text: #3390EC;
+
+  /* ---- Scrollbar ---- */
+  --tg-scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --tg-scrollbar-thumb-hover: rgba(0, 0, 0, 0.28);
+  --tg-scrollbar-track: transparent;
+
+  /* ---- Spoiler ---- */
+  --tg-spoiler-bg: rgba(0, 0, 0, 0.1);
+
+  /* ---- Typing dots ---- */
+  --tg-typing-color: var(--color-primary);
+
+  /* ---- Selection ---- */
+  --selection-bg: rgba(0, 122, 255, 0.2);
+}
+
+/* ---- Shared Non-Color Tokens ---- */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "MiSans", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-pill: 9999px;
+
+  --transition-spring: 0.22s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  --transition-fast: 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* ---- Global Selection ---- */
+::selection {
+  background: var(--selection-bg);
+}
+
+/* ---- Telegram-style Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--tg-scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tg-scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tg-scrollbar-thumb-hover);
+}
+
+/* ---- Spoiler (dual-theme) ---- */
+.tg-spoiler {
+  background: var(--tg-spoiler-bg);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: filter var(--transition-fast), background var(--transition-fast);
+}
+.tg-spoiler.hidden {
+  filter: blur(5px);
+  user-select: none;
+}
+.tg-spoiler:hover {
+  filter: blur(3px);
+}
+.tg-spoiler.revealed {
+  filter: none;
+  background: transparent;
+}

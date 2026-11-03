@@ -2,5 +2,34 @@
   "name": "hello",
   "version": "1.0.0",
   "description": "友好问候命令与自定义问候语配置",
-  "entry": "index.js"
+  "entry": "index.js",
+  "configSchema": [
+    {
+      "key": "greeting",
+      "label": "问候语",
+      "type": "textarea",
+      "description": "使用 /hello 命令时回复的问候文本",
+      "default": "你好！我是 TGuserBOT，很高兴见到你！",
+      "placeholder": "输入自定义问候语...",
+      "group": "基本设置"
+    },
+    {
+      "key": "greetOnJoin",
+      "label": "进群自动问候",
+      "type": "boolean",
+      "description": "有新成员进群时自动发送问候语",
+      "default": false,
+      "group": "自动行为"
+    },
+    {
+      "key": "greetingDelay",
+      "label": "问候延迟 (秒)",
+      "type": "number",
+      "description": "新成员进群后延迟多少秒发送问候",
+      "default": 3,
+      "min": 0,
+      "max": 60,
+      "group": "自动行为"
+    }
+  ]
 }

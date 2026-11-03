@@ -2,5 +2,39 @@
   "name": "welcome",
   "version": "1.0.0",
   "description": "新成员进群自动欢迎与模板配置",
-  "entry": "index.js"
+  "entry": "index.js",
+  "configSchema": [
+    {
+      "key": "template",
+      "label": "欢迎模板",
+      "type": "textarea",
+      "description": "支持 {name} {chat} {count} 占位符",
+      "default": "欢迎 {name} 加入 {chat}！你是第 {count} 位成员。",
+      "placeholder": "使用 {name}、{chat}、{count} 占位符...",
+      "group": "欢迎消息"
+    },
+    {
+      "key": "deleteAfter",
+      "label": "自动删除时间 (秒)",
+      "type": "number",
+      "description": "发送欢迎消息后多少秒自动删除 (0 = 不删除)",
+      "default": 0,
+      "min": 0,
+      "max": 3600,
+      "group": "欢迎消息"
+    },
+    {
+      "key": "welcomeMedia",
+      "label": "附加媒体",
+      "type": "select",
+      "description": "欢迎消息附带的媒体类型",
+      "options": [
+        { "value": "none", "label": "无" },
+        { "value": "sticker", "label": "贴纸" },
+        { "value": "gif", "label": "GIF 动图" }
+      ],
+      "default": "none",
+      "group": "欢迎消息"
+    }
+  ]
 }

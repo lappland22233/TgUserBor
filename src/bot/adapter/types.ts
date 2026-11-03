@@ -32,7 +32,7 @@ export interface MessageEntity {
   userId?: number;
 }
 
-export type MediaType = 'photo' | 'video' | 'audio' | 'document' | 'voice' | 'sticker' | 'animation' | 'poll';
+export type MediaType = 'photo' | 'video' | 'audio' | 'document' | 'voice' | 'sticker' | 'animation' | 'poll' | 'webpage';
 
 export interface MediaAttachment {
   type: MediaType;
@@ -64,6 +64,14 @@ export interface MediaAttachment {
   publicVoters?: boolean;
   multipleChoice?: boolean;
   isQuiz?: boolean;
+  /** Voice waveform data (0-31 per bar) */
+  waveform?: number[];
+  /** Webpage link preview */
+  webTitle?: string;
+  webDescription?: string;
+  webUrl?: string;
+  webSiteName?: string;
+  webPhotoThumb?: boolean;
 }
 
 export interface MessageReaction {
@@ -79,6 +87,12 @@ export interface ForwardHeader {
   channelId?: number;
   postAuthor?: string;
   date?: number;
+}
+
+export interface ServiceAction {
+  type: string; // 'joined' | 'left' | 'title_changed' | 'photo_changed' | 'pinned' | 'created' | ...
+  text: string; // Localized display text
+  users?: UserRef[];
 }
 
 export interface IncomingMessage {
@@ -98,6 +112,16 @@ export interface IncomingMessage {
   fwdFrom?: ForwardHeader;
   views?: number;
   forwards?: number;
+  /** Service message (joined/left/title_changed etc.) */
+  service?: ServiceAction;
+  /** Album/group media group id */
+  groupedId?: string;
+  /** Whether outgoing message has been read by the other side */
+  read?: boolean;
+  /** Forum topic id (for supergroups with topics) */
+  topicId?: number;
+  /** Number of replies/comments (for channel posts) */
+  replies?: number;
 }
 
 export interface NewChatParticipant {
@@ -156,6 +180,20 @@ export interface DialogInfo {
   lastMessage?: string;
   lastSender?: string;
   isChannel?: boolean;
+  /** Whether the user is currently online */
+  online?: boolean;
+  /** Last seen timestamp (ms) */
+  lastSeen?: number;
+  /** Highest read incoming message id */
+  readInboxMaxId?: number;
+  /** Highest read outgoing message id */
+  readOutboxMaxId?: number;
+  /** Whether the chat is muted */
+  muted?: boolean;
+  /** Folder id (0 = no folder, 1 = archive) */
+  folderId?: number;
+  /** Whether the chat is archived */
+  archived?: boolean;
 }
 
 export interface UserStatus {

@@ -311,6 +311,7 @@ function switchView(viewName) {
     scheduler: '定时与自动重复广播管理',
     plugins: '全局插件中心',
     logs: '实时控制台日志',
+    settings: '系统设置',
   };
   el.currentTitle.innerText = titles[viewName] || '控制台';
 
@@ -673,8 +674,38 @@ window.openConfigModal = async (pluginName) => {
   const instId = el.pluginInstSelect.value;
   document.getElementById('plugin-config-title').innerText = `插件配置: ${pluginName} (${instId})`;
   try {
-    const res = await api(`/api/plugins/${pluginName}/config?instance=${instId}`);
-    document.getElementById('plugin-config-json').value = JSON.stringify(res.config || {}, null, 2);
+    const [configRes, pluginsRes] = await Promise.all([
+      api(`/api/plugins/${pluginName}/config?instance=${instId}`),
+      api('/api/plugins'),
+    ]);
+    const config = configRes.config || {};
+    const pluginMeta = Array.isArray(pluginsRes) ? pluginsRes.find((p) => p.name === pluginName) : null;
+    const schema = pluginMeta?.configSchema || [];
+
+    state.selectedConfigSchema = schema;
+    state.selectedConfigValues = config;
+
+    const formEl = document.getElementById('plugin-config-form');
+    const jsonEl = document.getElementById('plugin-config-json');
+    const formBtn = document.getElementById('btn-config-mode-form');
+    const jsonBtn = document.getElementById('btn-config-mode-json');
+
+    if (schema.length > 0) {
+      // Schema available → default to form mode
+      window.PluginConfigForm.render(formEl, schema, config);
+      formEl.style.display = '';
+      jsonEl.style.display = 'none';
+      formBtn.classList.add('active');
+      jsonBtn.classList.remove('active');
+    } else {
+      // No schema → JSON mode
+      formEl.style.display = 'none';
+      jsonEl.style.display = '';
+      formBtn.classList.remove('active');
+      jsonBtn.classList.add('active');
+      jsonEl.value = JSON.stringify(config, null, 2);
+    }
+
     el.modalPluginConfig.classList.add('active');
   } catch (err) {
     showToast(`获取配置失败: ${err.message}`, 'error');
@@ -1047,20 +1078,68 @@ function initListeners() {
     }
   };
 
-  // Plugin Config Modal
+  // Plugin Config Modal — dual mode (form / JSON)
   document.getElementById('btn-close-plugin-config').onclick = () => el.modalPluginConfig.classList.remove('active');
   document.getElementById('btn-cancel-plugin-config').onclick = () => el.modalPluginConfig.classList.remove('active');
+
+  // Mode switching
+  document.getElementById('btn-config-mode-form').onclick = () => {
+    const formEl = document.getElementById('plugin-config-form');
+    const jsonEl = document.getElementById('plugin-config-json');
+    formEl.style.display = '';
+    jsonEl.style.display = 'none';
+    document.getElementById('btn-config-mode-form').classList.add('active');
+    document.getElementById('btn-config-mode-json').classList.remove('active');
+  };
+  document.getElementById('btn-config-mode-json').onclick = () => {
+    const formEl = document.getElementById('plugin-config-form');
+    const jsonEl = document.getElementById('plugin-config-json');
+    formEl.style.display = 'none';
+    jsonEl.style.display = '';
+    document.getElementById('btn-config-mode-form').classList.remove('active');
+    document.getElementById('btn-config-mode-json').classList.add('active');
+    // Sync form values → JSON
+    if (state.selectedConfigSchema?.length) {
+      jsonEl.value = JSON.stringify(window.PluginConfigForm.toJSON(formEl, state.selectedConfigSchema), null, 2);
+    }
+  };
+
+  // Reset to defaults
+  document.getElementById('btn-reset-plugin-config').onclick = () => {
+    if (state.selectedConfigSchema?.length) {
+      window.PluginConfigForm.resetToDefaults(
+        document.getElementById('plugin-config-form'),
+        state.selectedConfigSchema
+      );
+      showToast('已恢复默认值（未保存）', 'info');
+    }
+  };
+
+  // Save
   document.getElementById('btn-save-plugin-config').onclick = async () => {
     const pluginName = state.selectedConfigPlugin;
     const instId = el.pluginInstSelect.value;
-    const rawJson = document.getElementById('plugin-config-json').value;
+    const formEl = document.getElementById('plugin-config-form');
+    const jsonEl = document.getElementById('plugin-config-json');
+    const isFormMode = formEl.style.display !== 'none';
+
     try {
-      const parsed = JSON.parse(rawJson);
+      let parsed;
+      if (isFormMode && state.selectedConfigSchema?.length) {
+        // Validate form
+        if (!window.PluginConfigForm.validate(formEl, state.selectedConfigSchema)) {
+          showToast('请修正表单中的校验错误', 'error');
+          return;
+        }
+        parsed = window.PluginConfigForm.toJSON(formEl, state.selectedConfigSchema);
+      } else {
+        parsed = JSON.parse(jsonEl.value);
+      }
       await api(`/api/plugins/${pluginName}/config?instance=${instId}`, 'PUT', { config: parsed });
       showToast(`插件 "${pluginName}" 配置已更新`, 'success');
       el.modalPluginConfig.classList.remove('active');
     } catch (err) {
-      showToast(`保存配置失败 (需为有效 JSON): ${err.message}`, 'error');
+      showToast(`保存配置失败: ${err.message}`, 'error');
     }
   };
 
@@ -1789,7 +1868,10 @@ function renderClientDialogs() {
     const draftBadgeHtml = hasDraft ? '<span class="dialog-draft-tag">草稿</span>' : '';
     let snippetText = '';
     let snippetClass = 'dialog-snippet';
-    if (hasDraft) {
+    if (d._typing) {
+      snippetText = '<span style="color:var(--tg-typing-color);">正在输入<span class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span></span>';
+      snippetClass += ' typing-snippet';
+    } else if (hasDraft) {
       snippetText = escapeHtml(state.clientDrafts[d.id].replace(/\n/g, ' '));
       snippetClass += ' draft-snippet';
     } else if (d.lastMessage) {
@@ -1800,16 +1882,17 @@ function renderClientDialogs() {
     }
 
     item.innerHTML = `
-      <div class="dialog-avatar-wrap" style="width: 42px; height: 42px; min-width: 42px; min-height: 42px; max-width: 42px; max-height: 42px; border-radius: 50%; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-subtle);">
-        <img class="dialog-avatar-img" src="${avatarUrl}" alt="" loading="lazy" style="width: 42px; height: 42px; max-width: 42px; max-height: 42px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
+      <div class="dialog-avatar-wrap" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; position: relative; overflow: visible; flex-shrink: 0; background: var(--bg-subtle);">
+        <img class="dialog-avatar-img" src="${avatarUrl}" alt="" loading="lazy" style="width: 48px; height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
              onload="this.classList.add('loaded'); if(this.nextElementSibling) this.nextElementSibling.style.display='none';"
              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-        <div class="dialog-avatar-initials" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; color: #93c5fd; text-transform: uppercase;">${escapeHtml(initials)}</div>
+        <div class="dialog-avatar-initials" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--color-primary); text-transform: uppercase;">${escapeHtml(initials)}</div>
+        ${d.online ? '<span class="dialog-online-dot" title="在线"></span>' : ''}
       </div>
       <div class="dialog-info">
         <div class="dialog-title-row">
           <span class="dialog-title">${typeIcon}${escapeHtml(d.title || d.username || String(d.id))}</span>
-          <span class="dialog-time" style="display:flex;align-items:center;gap:4px;">${muteIconHtml}${timeStr}</span>
+          <span class="dialog-time" style="display:flex;align-items:center;gap:4px;">${d.pinned ? '<svg class="dialog-pinned-icon" title="已置顶"><use href="#icon-pin"/></svg>' : ''}${muteIconHtml}${timeStr}</span>
         </div>
         <div class="dialog-snippet-row">
           ${draftBadgeHtml}
@@ -2204,11 +2287,78 @@ function renderClientMessages(preserveScroll = false) {
   container.innerHTML = '';
   container.classList.toggle('selection-mode', Boolean(state.isSelectionMode));
 
-  for (const m of list) {
+  // Pre-compute message grouping info
+  const msgMeta = [];
+  let lastDate = '';
+  let lastSenderId = null;
+  let lastTime = 0;
+
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i];
+    const msgDate = new Date(m.date || Date.now());
+    const dateKey = msgDate.toDateString();
+    const isNewDate = dateKey !== lastDate;
+    const time = m.date || 0;
+    const isService = Boolean(m.service);
+
+    // Grouping: same sender, within 5 min, same date, not service, not first
+    const canGroup = !isNewDate && !isService && lastSenderId === m.from?.id &&
+      (time - lastTime) < 5 * 60 * 1000 && time >= lastTime && lastSenderId !== null;
+
+    // Is this the last message in a group? (next message doesn't group with this)
+    const nextM = list[i + 1];
+    const nextGroups = nextM && !nextM.service &&
+      nextM.from?.id === m.from?.id &&
+      (nextM.date - time) < 5 * 60 * 1000 &&
+      new Date(nextM.date).toDateString() === dateKey;
+
+    msgMeta.push({
+      isNewDate,
+      dateKey,
+      isService,
+      isFirstInGroup: !canGroup,
+      isLastInGroup: !nextGroups,
+      showAvatar: !isService && (!nextGroups || !canGroup),
+    });
+
+    lastDate = dateKey;
+    lastSenderId = isService ? null : m.from?.id;
+    lastTime = time;
+  }
+
+  for (let mi = 0; mi < list.length; mi++) {
+    const m = list[mi];
+    const meta = msgMeta[mi];
     const isOut = Boolean(m.outgoing);
     const isSelected = state.selectedMsgIds && state.selectedMsgIds.has(m.id);
     const wrap = document.createElement('div');
-    wrap.className = `chat-bubble-wrap ${isOut ? 'outgoing' : 'incoming'} ${isSelected ? 'selected' : ''}`;
+
+    // Date separator
+    if (meta.isNewDate) {
+      const sepDate = new Date(m.date || Date.now());
+      const today = new Date();
+      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+      let dateLabel;
+      if (sepDate.toDateString() === today.toDateString()) dateLabel = '今天';
+      else if (sepDate.toDateString() === yesterday.toDateString()) dateLabel = '昨天';
+      else dateLabel = sepDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const sep = document.createElement('div');
+      sep.className = 'msg-date-sep';
+      sep.innerHTML = `<span>${dateLabel}</span>`;
+      container.appendChild(sep);
+    }
+
+    // Service message
+    if (meta.isService && m.service) {
+      wrap.className = 'msg-service-wrap';
+      wrap.id = `chat-msg-${m.id}`;
+      wrap.dataset.msgId = m.id;
+      wrap.innerHTML = `<div class="msg-service">${escapeHtml(m.service.text || m.text || '系统消息')}</div>`;
+      container.appendChild(wrap);
+      continue;
+    }
+    wrap.className = `chat-bubble-wrap ${isOut ? 'outgoing' : 'incoming'} ${isSelected ? 'selected' : ''} ${meta.isFirstInGroup ? 'group-start' : 'group-mid'} ${meta.isLastInGroup ? 'group-end' : ''}`;
     wrap.id = `chat-msg-${m.id}`;
     wrap.dataset.msgId = m.id;
     wrap.dataset.isOut = isOut ? '1' : '0';
@@ -2311,7 +2461,7 @@ function renderClientMessages(preserveScroll = false) {
       } else if (media.type === 'voice') {
         const voiceUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
         const voiceDur = media.duration ? formatDurationSec(media.duration) : '语音';
-        const waveformBars = generateWaveformBarsHtml(m.id, m.id);
+        const waveformBars = generateWaveformBarsHtml(m.id, m.id, media.waveform);
         mediaHtml = `
           <div class="msg-voice-card" id="voice-card-${m.id}">
             <button class="voice-play-btn" onclick="toggleVoicePlay(this, '${voiceUrl}', ${m.id})" title="播放语音">
@@ -2372,15 +2522,17 @@ function renderClientMessages(preserveScroll = false) {
       textHtml = `<div class="chat-bubble-text">${formatMessageContent(m.text, m.entities)}</div>`;
     }
 
-    // Status tick for outgoing
+    // Status tick for outgoing (Telegram-style: ✓ sent, ✓✓ read)
     let statusTickHtml = '';
     if (isOut) {
       if (m.status === 'pending') {
         statusTickHtml = `<span class="msg-status-tick pending" title="正在发送...">⏱</span>`;
       } else if (m.status === 'failed') {
-        statusTickHtml = `<span class="msg-status-tick" style="color:var(--color-danger);" title="发送失败">✕</span>`;
+        statusTickHtml = `<span class="msg-status-tick failed" title="发送失败">✕</span>`;
+      } else if (m.read) {
+        statusTickHtml = `<span class="msg-status-tick read" title="已读">✓✓</span>`;
       } else {
-        statusTickHtml = `<span class="msg-status-tick sent" title="已发送">✓</span>`;
+        statusTickHtml = `<span class="msg-status-tick sent" title="已送达">✓</span>`;
       }
     }
 
@@ -2394,12 +2546,39 @@ function renderClientMessages(preserveScroll = false) {
       reactionsHtml = `<div class="msg-reactions-wrap">${badges}</div>`;
     }
 
+    // Channel comments button
+    let commentsHtml = '';
+    if (m.replies && m.replies > 0) {
+      commentsHtml = `
+        <div class="msg-comments-btn" onclick="event.stopPropagation(); showComments(${m.id}, ${chatId})">
+          <svg class="ui-icon-xs" style="width:12px;height:12px;"><use href="#icon-chat"/></svg>
+          <span>${m.replies} 条评论</span>
+        </div>
+      `;
+    }
+
     const isPureMedia = Boolean(m.media && ['photo', 'video', 'animation', 'sticker'].includes(m.media.type) && (!m.text || !m.text.trim()) && !m.isReply && !m.replyToMessageId && !m.fwdFrom);
     const isSticker = Boolean(m.media && m.media.type === 'sticker');
-    const bubbleClass = `chat-bubble ${isPureMedia ? 'pure-media-bubble' : ''} ${isSticker ? 'sticker-bubble-transparent' : ''}`;
+    const isWebpage = Boolean(m.media && m.media.type === 'webpage');
+    const bubbleClass = `chat-bubble ${isPureMedia ? 'pure-media-bubble' : ''} ${isSticker ? 'sticker-bubble-transparent' : ''} ${meta.isLastInGroup ? 'group-tail' : 'grouped'} ${isOut ? 'out' : 'in'}`;
+
+    // Webpage link preview
+    if (isWebpage) {
+      const web = m.media;
+      mediaHtml = `
+        <div class="msg-link-preview">
+          ${web.webPhotoThumb ? `<div class="msg-link-thumb"><div class="msg-link-thumb-placeholder"></div></div>` : ''}
+          <div class="msg-link-info">
+            ${web.webSiteName ? `<div class="msg-link-site">${escapeHtml(web.webSiteName)}</div>` : ''}
+            ${web.webTitle ? `<div class="msg-link-title">${escapeHtml(web.webTitle)}</div>` : ''}
+            ${web.webDescription ? `<div class="msg-link-desc">${escapeHtml(web.webDescription)}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
 
     let senderHeaderHtml = '';
-    if (!isOut) {
+    if (!isOut && meta.isFirstInGroup) {
       senderHeaderHtml = `<div class="chat-bubble-sender" style="color: ${senderColor}; cursor: pointer;" onclick="event.stopPropagation(); loadPeerProfile(${senderId})">${escapeHtml(senderName)}</div>`;
     }
 
@@ -2415,7 +2594,7 @@ function renderClientMessages(preserveScroll = false) {
         <button type="button" class="quick-react-btn" onclick="event.stopPropagation(); quickToggleReaction('${m.id}', '😂')">😂</button>
       </div>
       <div class="msg-row-inner">
-        ${!isOut && senderId ? `
+        ${!isOut && senderId && meta.isLastInGroup ? `
           <div class="msg-sender-avatar-wrap" onclick="event.stopPropagation(); loadPeerProfile(${senderId})" title="${escapeHtml(senderName)} (点击查看资料)">
             <img class="msg-sender-avatar-img" src="${avatarUrl}" alt="" loading="lazy"
                  onload="this.classList.add('loaded'); if (this.nextElementSibling) this.nextElementSibling.style.display='none';"
@@ -2436,6 +2615,7 @@ function renderClientMessages(preserveScroll = false) {
             </div>
           </div>
           ${reactionsHtml}
+          ${commentsHtml}
         </div>
       </div>
     `;
@@ -2728,6 +2908,21 @@ function scrollToMessage(msgId) {
     showToast(`未在当前加载列表中找到消息 #${msgId}`, 'info');
   }
 }
+
+// Channel post comments
+window.showComments = (msgId, chatId) => {
+  showToast('评论区功能开发中，敬请期待', 'info');
+};
+
+// Spoiler reveal on click (delegated)
+document.addEventListener('click', (e) => {
+  const spoiler = e.target.closest('.tg-spoiler.hidden');
+  if (spoiler) {
+    e.stopPropagation();
+    spoiler.classList.remove('hidden');
+    spoiler.classList.add('revealed');
+  }
+});
 
 function toggleChatSearchBar(forceOpen) {
   const bar = document.getElementById('chat-search-bar');
@@ -3113,11 +3308,23 @@ let currentActiveVoiceAudio = null;
 let currentVoiceBtn = null;
 let currentVoiceMsgId = null;
 
-function generateWaveformBarsHtml(msgId, seed = 0) {
-  const baseHeights = [4, 6, 10, 16, 20, 14, 8, 12, 18, 22, 16, 10, 6, 12, 18, 24, 19, 12, 8, 15, 20, 14, 9, 14, 10, 7, 5, 3];
-  const bars = baseHeights.map((h, i) => {
-    const height = Math.max(3, Math.min(22, Math.round(h * (0.8 + ((Math.abs(seed) + i * 7) % 5) * 0.1))));
-    return `<span class="voice-bar" data-idx="${i}" style="height:${height}px;"></span>`;
+function generateWaveformBarsHtml(msgId, seed = 0, realWaveform = null) {
+  let barHeights;
+  if (realWaveform && Array.isArray(realWaveform) && realWaveform.length > 0) {
+    // Use real waveform data (0-31 normalized to pixel heights)
+    barHeights = realWaveform.map((v) => Math.max(3, Math.min(22, Math.round((v / 31) * 22))));
+    // Resample to ~28 bars if needed
+    if (barHeights.length > 32) {
+      const step = barHeights.length / 28;
+      barHeights = Array.from({ length: 28 }, (_, i) => barHeights[Math.floor(i * step)]);
+    }
+  } else {
+    // Fallback: pseudo-random waveform
+    const baseHeights = [4, 6, 10, 16, 20, 14, 8, 12, 18, 22, 16, 10, 6, 12, 18, 24, 19, 12, 8, 15, 20, 14, 9, 14, 10, 7, 5, 3];
+    barHeights = baseHeights.map((h, i) => Math.max(3, Math.min(22, Math.round(h * (0.8 + ((Math.abs(seed) + i * 7) % 5) * 0.1)))));
+  }
+  const bars = barHeights.map((h, i) => {
+    return `<span class="voice-bar" data-idx="${i}" style="height:${h}px;"></span>`;
   }).join('');
   return `<div class="voice-waveform-bars" id="voice-bars-${msgId}" onclick="seekVoiceWaveform(event, ${msgId})">${bars}</div>`;
 }
@@ -6353,6 +6560,71 @@ class ChatWSManager {
             }
           }, 4500);
         }
+      } else {
+        // Show typing indicator in dialog list
+        const dIndex = state.clientDialogs.findIndex((d) => String(d.id) === String(event.chatId));
+        if (dIndex !== -1) {
+          const d = state.clientDialogs[dIndex];
+          d._typing = true;
+          renderClientDialogs();
+          // Clear after timeout
+          if (d._typingTimer) clearTimeout(d._typingTimer);
+          d._typingTimer = setTimeout(() => {
+            d._typing = false;
+            renderClientDialogs();
+          }, 4500);
+        }
+      }
+    }
+
+    // Real-time message read receipt
+    if (event.type === 'message_read' && event.instId === state.clientSelectedInstance) {
+      const chatId = String(event.chatId);
+      const maxId = Number(event.maxId || 0);
+      // Mark all outgoing messages <= maxId as read
+      let updated = false;
+      for (const m of state.clientMessages) {
+        if (m.outgoing && m.id <= maxId && !m.read) {
+          m.read = true;
+          updated = true;
+          // Update tick in-place
+          const msgEl = document.getElementById(`chat-msg-${m.id}`);
+          if (msgEl) {
+            const tick = msgEl.querySelector('.msg-status-tick');
+            if (tick) {
+              tick.className = 'msg-status-tick read';
+              tick.title = '已读';
+              tick.textContent = '✓✓';
+            }
+          }
+        }
+      }
+      if (updated && chatId === String(state.clientActiveChatId)) {
+        // No full re-render needed, in-place update is sufficient
+      }
+    }
+
+    // Real-time user online status
+    if (event.type === 'user_status' && event.instId === state.clientSelectedInstance) {
+      const userId = String(event.userId);
+      // Update dialog list
+      const d = state.clientDialogs.find((x) => String(x.id) === userId);
+      if (d) {
+        d.online = Boolean(event.online);
+        d.lastSeen = event.lastSeen || d.lastSeen;
+        renderClientDialogs();
+      }
+      // Update chat header subtitle if current chat
+      if (String(state.clientActiveChatId) === userId) {
+        const subtitleEl = document.getElementById('client-chat-subtitle');
+        if (subtitleEl && !state.typingTimer) {
+          if (event.online) {
+            subtitleEl.innerHTML = '<span style="color:var(--tg-online-dot);">在线</span>';
+          } else if (event.lastSeen) {
+            const ls = new Date(event.lastSeen);
+            subtitleEl.innerText = `最后上线于 ${ls.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          }
+        }
       }
     }
 
@@ -7296,6 +7568,9 @@ async function markAllDialogsRead() {
 
 // App Initialization
 window.onload = async () => {
+  if (window.ThemeManager) window.ThemeManager.init();
+  if (window.SettingsPage) window.SettingsPage.init();
+  if (window.ProfilePanel) window.ProfilePanel.init();
   initListeners();
   initSSE();
   initMessageContextMenu();
