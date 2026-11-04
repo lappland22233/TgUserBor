@@ -925,6 +925,50 @@ function initListeners() {
   if (btnMobileMenu) btnMobileMenu.onclick = openMobileSidebar;
   if (sidebarBackdrop) sidebarBackdrop.onclick = closeMobileSidebar;
 
+  // Desktop Sidebar Collapse (persisted across sessions)
+  const btnSidebarCollapse = document.getElementById('btn-sidebar-collapse');
+  const SIDEBAR_COLLAPSE_KEY = 'tgbot_sidebar_collapsed';
+
+  const applySidebarCollapsed = (collapsed) => {
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    if (!btnSidebarCollapse) return;
+    const label = collapsed ? '展开侧栏' : '收起侧栏';
+    btnSidebarCollapse.title = label;
+    btnSidebarCollapse.setAttribute('aria-label', label);
+    btnSidebarCollapse.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const labelEl = btnSidebarCollapse.querySelector('.collapse-label');
+    if (labelEl) labelEl.textContent = label;
+  };
+
+  let initialCollapsed = false;
+  try {
+    initialCollapsed = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
+  } catch (_) {
+    initialCollapsed = false;
+  }
+  applySidebarCollapsed(initialCollapsed);
+
+  if (btnSidebarCollapse) {
+    btnSidebarCollapse.onclick = () => {
+      const next = !document.body.classList.contains('sidebar-collapsed');
+      applySidebarCollapsed(next);
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSE_KEY, next ? '1' : '0');
+      } catch (_) { /* storage unavailable */ }
+    };
+  }
+
+  // Ctrl/Cmd + B toggles the sidebar
+  if (!document.body.dataset.sidebarHotkeyBound) {
+    document.body.dataset.sidebarHotkeyBound = '1';
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        document.getElementById('btn-sidebar-collapse')?.click();
+      }
+    });
+  }
+
   // Navigation
   el.navItems.forEach((item) => {
     item.onclick = () => {
