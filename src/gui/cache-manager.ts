@@ -109,7 +109,8 @@ export class CacheManager {
   setRecentMessages(instId: string, chatId: number | string, messages: any[]): void {
     const key = `${instId}_${chatId}`;
     // 缓存最新 100 条
-    const slice = messages.slice(-100);
+    // getMessages returns newest first; retain that order for pagination clients.
+    const slice = messages.slice(0, 100);
     this.messagesCache.set(key, { data: slice, updatedAt: Date.now() });
   }
 
@@ -124,10 +125,24 @@ export class CacheManager {
     const entry = this.messagesCache.get(key);
     if (entry && Array.isArray(entry.data)) {
       if (!entry.data.some((m) => m.id === message.id)) {
-        entry.data.push(message);
-        if (entry.data.length > 150) entry.data.shift();
+        entry.data.unshift(message);
+        if (entry.data.length > 100) entry.data.pop();
       }
     }
+  }
+
+  updateMessage(instId: string, chatId: number | string, message: any): void {
+    const entry = this.messagesCache.get(`${instId}_${chatId}`);
+    if (!entry) return;
+    const index = entry.data.findIndex((item) => String(item.id) === String(message.id));
+    if (index !== -1) entry.data[index] = message;
+  }
+
+  deleteMessages(instId: string, chatId: number | string, messageIds: any[]): void {
+    const entry = this.messagesCache.get(`${instId}_${chatId}`);
+    if (!entry) return;
+    const ids = new Set(messageIds.map(String));
+    entry.data = entry.data.filter((item) => !ids.has(String(item.id)));
   }
 
   // ================= 磁盘级头像与缩略图缓存 =================
