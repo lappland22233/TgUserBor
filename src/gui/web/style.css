@@ -7701,3 +7701,182 @@ input:checked + .slider:before {
   background: var(--color-primary-subtle) !important;
   border-radius: 8px;
 }
+
+/* Telegram Web-inspired client workspace. Scoped to the client view so the
+   management console keeps its own styling. */
+#view-client {
+  --client-surface: #17212b;
+  --client-search: #242f3d;
+  --client-muted: #8c9daa;
+  --client-accent: #5288c1;
+}
+[data-theme="light"] #view-client {
+  --client-surface: #fff;
+  --client-search: #f1f3f5;
+  --client-muted: #707c87;
+  --client-accent: #3390ec;
+}
+#view-client .client-topbar {
+  margin-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--client-surface);
+  padding: 8px 14px;
+}
+#view-client .client-layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 340px) minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  height: calc(100vh - 172px);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+#view-client .client-layout:has(.client-drawer.open) {
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) 320px;
+}
+#view-client .client-dialogs-pane,
+#view-client .client-chat-pane,
+#view-client .client-drawer {
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  background: var(--client-surface);
+}
+#view-client .client-dialogs-pane { border-right: 1px solid var(--border-subtle); }
+#view-client .client-drawer { border-left: 1px solid var(--border-subtle); }
+#view-client .dialogs-header { padding: 10px 10px 0; gap: 9px; }
+#view-client .dialogs-header .search-input-wrapper {
+  background: var(--client-search);
+  border-radius: 22px;
+}
+#view-client .dialogs-header .search-input { background: transparent; border: 0; box-shadow: none; }
+#view-client .dialogs-tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  gap: 2px;
+}
+#view-client .dialogs-tabs::-webkit-scrollbar { display: none; }
+#view-client .dialog-tab {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--client-muted);
+  box-shadow: none;
+}
+#view-client .dialog-tab.active { color: var(--client-accent); background: transparent; border-bottom-color: var(--client-accent); }
+#view-client .dialog-item { min-height: 72px; margin: 1px 6px; padding: 8px 10px; border-radius: 10px; gap: 10px; }
+#view-client .dialog-item.active { border: 0; background: var(--client-accent); box-shadow: none; }
+#view-client .dialog-item.active .dialog-title,
+#view-client .dialog-item.active .dialog-time,
+#view-client .dialog-item.active .dialog-snippet { color: #fff; }
+#view-client .dialog-avatar-wrap, #view-client .dialog-avatar,
+#view-client .dialog-avatar-img {
+  width: 54px !important; height: 54px !important;
+  min-width: 54px !important; min-height: 54px !important;
+  max-width: 54px !important; max-height: 54px !important;
+}
+#view-client .dialog-avatar-initials { font-size: 18px; }
+#view-client .dialog-title { font-size: 15px; font-weight: 600; }
+#view-client .dialog-time { font-family: inherit; font-size: 12px; }
+#view-client .dialog-snippet { font-size: 13px; }
+#view-client .chat-header { min-height: 60px; padding: 8px 16px; background: var(--client-surface); }
+#view-client .chat-header-info { min-width: 0; gap: 10px; }
+#view-client .chat-title-wrap { min-width: 0; }
+#view-client .chat-title, #view-client .chat-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-client .chat-title { font-size: 15px; }
+#view-client .chat-subtitle { font-size: 13px; color: var(--client-muted); }
+#view-client .chat-header-actions { gap: 2px; overflow-x: auto; }
+#view-client .chat-header-actions .btn { min-width: 36px; min-height: 36px; padding: 8px; border: 0; border-radius: 50%; background: transparent; box-shadow: none; color: var(--client-muted); }
+#view-client .chat-header-actions .btn-text { display: none; }
+#view-client .chat-header-actions .ui-icon-sm { width: 19px; height: 19px; }
+#view-client .chat-messages-container {
+  min-height: 0;
+  padding: 16px max(16px, calc((100% - 720px) / 2));
+  gap: 4px;
+  background: var(--tg-wallpaper);
+}
+#view-client .chat-placeholder { color: #fff; }
+#view-client .chat-placeholder p { background: rgba(0, 0, 0, .3); border-radius: 16px; padding: 5px 12px; font-size: 13px; }
+#view-client .chat-placeholder .placeholder-icon { display: none; }
+#view-client .chat-bubble-wrap { max-width: 85%; margin-bottom: 2px; }
+#view-client .chat-bubble { padding: 7px 10px; border: 0; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+#view-client .chat-bubble-wrap.incoming .chat-bubble { border-bottom-left-radius: 4px; }
+#view-client .chat-bubble-wrap.outgoing .chat-bubble { border-bottom-right-radius: 4px; }
+#view-client .chat-input-bar { padding: 9px max(12px, calc((100% - 720px) / 2)); background: var(--client-surface); border-top: 0; backdrop-filter: none; }
+#view-client .chat-input-field-wrap { gap: 4px; align-items: center; }
+#view-client .chat-input-side-actions { flex-direction: row; gap: 0; padding: 0; }
+#view-client .chat-input-right-actions { gap: 0; padding: 0; }
+#view-client .chat-side-btn, #view-client .chat-more-btn { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: var(--client-muted); }
+#view-client .chat-side-btn .ui-icon, #view-client .chat-more-btn .ui-icon { width: 20px; height: 20px; }
+#view-client .chat-textarea { border: 0; box-shadow: none; background: transparent; font-size: 15px; min-height: 40px; padding: 10px 8px; }
+#view-client .chat-send-morph { background: var(--client-accent); box-shadow: none; }
+@media (max-width: 768px) {
+  #view-client .client-layout, #view-client .client-layout:has(.client-drawer.open) { display: flex; height: calc(100vh - 200px); }
+  #view-client .client-layout:not(.in-chat) .client-dialogs-pane { display: flex !important; }
+  #view-client .client-layout:not(.in-chat) .client-chat-pane { display: none !important; }
+  #view-client .client-layout.in-chat .client-dialogs-pane { display: none !important; }
+  #view-client .client-layout.in-chat .client-chat-pane { display: flex !important; }
+  #view-client .client-drawer { display: none !important; transform: none; }
+  #view-client .client-drawer.open { display: flex !important; }
+  #view-client .chat-messages-container { padding: 12px; }
+  #view-client .chat-input-bar { padding: 6px; }
+  #view-client .chat-side-btn, #view-client .chat-more-btn { width: 34px; height: 40px; }
+}
+#view-client .chat-input-center-wrap { min-width: 0; }
+#view-client .chat-textarea { max-width: 100%; overflow-wrap: anywhere; }
+#view-client .chat-header-actions { flex-shrink: 1; min-width: 0; }
+@media (max-width: 768px) {
+  #view-client .client-chat-pane { min-width: 0; }
+  #view-client .chat-input-field-wrap { min-width: 0; }
+  #view-client .chat-input-side-actions, #view-client .chat-input-right-actions { flex-shrink: 0; }
+  #view-client .chat-textarea { max-height: min(160px, 30vh); }
+}
+/* Keep the selected chat wallpaper on the pane behind its transparent list. */
+#view-client .client-chat-pane { background: var(--tg-wallpaper); }
+#view-client .chat-messages-container { background: transparent; }
+@media (max-width: 768px) {
+  #view-client .client-drawer.open {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: min(85dvh, 720px);
+    z-index: 1050;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #view-client .client-drawer .drawer-header { flex-shrink: 0; min-width: 0; }
+  #view-client .client-drawer .drawer-tabs { flex: 1; min-width: 0; overflow-x: auto; }
+  #view-client .client-drawer .drawer-header > button { flex-shrink: 0; min-width: 40px; min-height: 40px; }
+}
+/* Keep grid children in a single full-height row and allow flexible chat text. */
+@media (min-width: 769px) {
+  #view-client .client-layout { grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  #view-client .client-dialogs-pane, #view-client .client-chat-pane, #view-client .client-drawer { height: 100%; min-height: 0; }
+}
+#view-client .msg-row-inner { width: auto; max-width: 100%; }
+#view-client .msg-content-column { flex: 0 1 auto; }
+#view-client .chat-bubble { max-width: min(520px, 100%); }
+@media (max-width: 768px) {
+  #view-client .chat-header-info { flex: 1 1 0; }
+  #view-client .chat-header-actions { flex: 0 1 120px; max-width: 120px; scrollbar-width: thin; }
+  #view-client .chat-header-actions .btn { flex: 0 0 36px; }
+  #view-client .chat-bubble-wrap { max-width: 90%; }
+  #view-client .chat-bubble { max-width: 100%; }
+}
+/* The collapsible profile panel is an overlay, not an extra implicit grid row. */
+@media (min-width: 769px) {
+  #view-client .client-profile-pane { position: absolute; top: 0; right: 0; bottom: 0; z-index: 10; }
+  #view-client .client-profile-pane.open { box-shadow: -4px 0 16px rgba(0, 0, 0, .16); }
+}

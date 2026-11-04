@@ -30,6 +30,7 @@ const state = {
   schedulerSelectedInstance: null,
   schedulerTasks: [],
   clientDrafts: {},
+  clientDraftsByAccount: {},
   chatSendKeyMode: localStorage.getItem('tgbot_chat_send_mode') || 'enter',
   clientSilent: localStorage.getItem('tgbot_chat_silent') === 'true',
   clientParseMode: localStorage.getItem('tgbot_chat_parse_mode') || 'markdown',
@@ -1161,7 +1162,23 @@ function initListeners() {
   const clientAccountSelect = document.getElementById('client-account-select');
   if (clientAccountSelect) {
     clientAccountSelect.onchange = () => {
+      if (state.clientSelectedInstance) state.clientDraftsByAccount[state.clientSelectedInstance] = state.clientDrafts;
       state.clientSelectedInstance = clientAccountSelect.value;
+      state.clientDrafts = state.clientDraftsByAccount[state.clientSelectedInstance] || {};
+      state.clientDraftsByAccount[state.clientSelectedInstance] = state.clientDrafts;
+      state.clientActiveChatId = null;
+      state.clientDialogs = [];
+      state.clientMessages = [];
+      cancelEditBanner();
+      const input = document.getElementById('client-message-textarea');
+      if (input) { input.value = ''; autoResizeTextarea(input); }
+      document.getElementById('client-chat-title').innerText = '选择聊天';
+      document.getElementById('client-chat-subtitle').innerText = '选择一个会话开始聊天';
+      state.clientReplyingTo = null;
+      cancelReplyBanner();
+      clearStagedAttachment();
+      document.getElementById('client-chat-actions').style.display = 'none';
+      document.getElementById('client-messages-container').innerHTML = '<div class="chat-placeholder"><p>选择一个会话开始聊天</p></div>';
       document.querySelector('.client-layout')?.classList.remove('in-chat');
       updateClientAccountBadge();
       loadClientDialogs();
@@ -1563,7 +1580,7 @@ function initListeners() {
     msgTextarea.oninput = () => {
       autoResizeTextarea(msgTextarea);
       triggerAutoTyping();
-      if (state.clientActiveChatId) {
+      if (state.clientActiveChatId && !state.clientEditingMessageId) {
         state.clientDrafts = state.clientDrafts || {};
         if (msgTextarea.value.trim()) {
           state.clientDrafts[state.clientActiveChatId] = msgTextarea.value;
@@ -1787,11 +1804,13 @@ async function loadClientDialogs() {
     if (!dialogs) {
       dialogs = await api(`/api/instances/${instId}/account/dialogs?limit=80`);
     }
+    if (state.clientSelectedInstance !== instId) return;
     state.clientDialogs = Array.isArray(dialogs) ? dialogs : [];
     renderClientDialogs();
     populateQuickChatOptions();
   } catch (err) {
-    container.innerHTML = `<div class="empty-state error">加载会话失败: ${err.message}</div>`;
+    if (state.clientSelectedInstance !== instId) return;
+    container.textContent = `加载会话失败: ${err.message}`;
   }
 }
 
@@ -2045,7 +2064,7 @@ window.showDialogContextMenu = (event, chatId) => {
 async function selectClientChat(dialog) {
   const prevChatId = state.clientActiveChatId;
   const textarea = document.getElementById('client-message-textarea');
-  if (prevChatId && textarea) {
+  if (prevChatId && textarea && !state.clientEditingMessageId) {
     state.clientDrafts = state.clientDrafts || {};
     if (textarea.value && textarea.value.trim()) {
       state.clientDrafts[prevChatId] = textarea.value;
@@ -2054,6 +2073,7 @@ async function selectClientChat(dialog) {
     }
   }
 
+  cancelEditBanner();
   state.clientActiveChatId = dialog.id;
   state.clientReplyingTo = null;
   state.clientSearchQuery = '';
@@ -2090,6 +2110,7 @@ async function selectClientChat(dialog) {
   if (headerAvatarImg && headerAvatarTxt) {
     const avatarUrl = `/api/instances/${instId}/account/avatar?chatId=${dialog.id}`;
     scheduler.loadImage(headerAvatarImg, avatarUrl).then((ok) => {
+      if (state.clientSelectedInstance !== instId || String(state.clientActiveChatId) !== String(dialog.id)) return;
       if (ok) {
         headerAvatarImg.style.opacity = '1';
         headerAvatarTxt.style.display = 'none';
@@ -2104,47 +2125,30 @@ async function selectClientChat(dialog) {
 
   document.getElementById('client-chat-title').innerText = dialog.title || dialog.username || `Chat #${dialog.id}`;
 
-  const typeMap = {
-    private: '私聊 (Private)',
-    group: '普通群组 (Group)',
-    supergroup: '超级群组 (Supergroup)',
-    channel: '广播频道 (Channel)',
-    bot: '机器人 (Bot)',
-  };
-  const userTag = dialog.username ? ` | @${dialog.username}` : '';
-
-  // Show member/subscriber count for groups and channels
-  let memberInfo = '';
+  let subtitle = '';
   if (dialog.type === 'group' || dialog.type === 'supergroup') {
     const count = dialog.participantsCount || dialog.membersCount;
-    memberInfo = count ? ` · ${count} 位成员` : '';
+    subtitle = count ? `${count} 位成员` : '群组';
   } else if (dialog.type === 'channel') {
     const count = dialog.participantsCount || dialog.membersCount || dialog.subscribersCount;
-    memberInfo = count ? ` · ${count} 位订阅者` : '';
-  } else if (dialog.online) {
-    memberInfo = ' · 在线';
+    subtitle = count ? `${count} 位订阅者` : '频道';
+  } else if (dialog.type === 'bot') {
+    subtitle = '机器人';
+  } else {
+    subtitle = dialog.online ? '在线' : (dialog.username ? `@${dialog.username}` : '');
   }
-  document.getElementById('client-chat-subtitle').innerText = `${typeMap[dialog.type] || dialog.type}${memberInfo} | ID: ${dialog.id}${userTag}`;
+  document.getElementById('client-chat-subtitle').innerText = subtitle;
   document.getElementById('client-chat-actions').style.display = 'flex';
   updateChatMuteButtonState(dialog.id);
 
-  // If Expression Drawer is NOT open, automatically open profile drawer and load details
-  const exprDrawer = document.getElementById('client-expression-drawer');
-  const exprOpen = exprDrawer && exprDrawer.style.display !== 'none' && exprDrawer.classList.contains('open');
+  // Keep the conversation in focus; refresh profile only if the user opened it.
   const profileDrawer = document.getElementById('client-drawer');
-  if (!exprOpen) {
-    if (profileDrawer) {
-      profileDrawer.style.display = 'flex';
-      profileDrawer.classList.add('open');
-      loadPeerProfile(dialog.id);
-    }
-  } else if (profileDrawer && profileDrawer.classList.contains('open')) {
-    loadPeerProfile(dialog.id);
-  }
+  if (profileDrawer && profileDrawer.classList.contains('open')) loadPeerProfile(dialog.id);
 
   await loadClientMessages(dialog.id);
 }
 
+let clientMessagesRequest = 0;
 let isLoadingEarlierMessages = false;
 let hasReachedEarliestMessage = false;
 
@@ -2152,13 +2156,14 @@ async function loadClientMessages(chatId, isSilentRefresh = false) {
   const container = document.getElementById('client-messages-container');
   if (!container) return;
   hasReachedEarliestMessage = false;
+  const request = ++clientMessagesRequest;
+  const instId = state.clientSelectedInstance;
 
   if (!isSilentRefresh) {
     container.innerHTML = '<div class="chat-placeholder"><p>正在获取历史消息...</p></div>';
   }
 
   try {
-    const instId = state.clientSelectedInstance;
     let msgs;
     if (window.chatWs && window.chatWs.isConnected()) {
       try {
@@ -2168,11 +2173,13 @@ async function loadClientMessages(chatId, isSilentRefresh = false) {
     if (!msgs) {
       msgs = await api(`/api/instances/${instId}/account/messages?chatId=${chatId}&limit=60`);
     }
+    if (request !== clientMessagesRequest || instId !== state.clientSelectedInstance || String(chatId) !== String(state.clientActiveChatId)) return;
     state.clientMessages = Array.isArray(msgs) ? msgs.reverse() : [];
     renderClientMessages(isSilentRefresh);
   } catch (err) {
+    if (request !== clientMessagesRequest || instId !== state.clientSelectedInstance || String(chatId) !== String(state.clientActiveChatId)) return;
     if (!isSilentRefresh) {
-      container.innerHTML = `<div class="chat-placeholder"><p style="color:var(--color-danger)">获取消息失败: ${err.message}</p></div>`;
+      container.textContent = `获取消息失败: ${err.message}`;
     }
   }
 }
@@ -2214,6 +2221,7 @@ async function loadEarlierMessages() {
       earlierMsgs = await api(`/api/instances/${instId}/account/messages?chatId=${chatId}&limit=40&offsetId=${oldestMsg.id}`);
     }
 
+    if (instId !== state.clientSelectedInstance || String(chatId) !== String(state.clientActiveChatId)) return;
     if (!Array.isArray(earlierMsgs) || earlierMsgs.length === 0) {
       hasReachedEarliestMessage = true;
       if (topLoader) topLoader.remove();
@@ -2840,6 +2848,8 @@ async function sendClientMessage(scheduledTimestamp = null) {
   }
 
   const instId = state.clientSelectedInstance;
+  const chatId = state.clientActiveChatId;
+  const isActiveChat = () => state.clientSelectedInstance === instId && String(state.clientActiveChatId) === String(chatId);
   const parseMode = state.clientParseMode || document.getElementById('client-input-parsemode')?.value || 'markdown';
   const silent = Boolean(state.clientSilent);
   const replyTo = state.clientReplyingTo ? state.clientReplyingTo.id : undefined;
@@ -2857,7 +2867,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
       try {
         const b64 = reader.result.split(',')[1];
         await api(`/api/instances/${instId}/account/send-media`, 'POST', {
-          chatId: state.clientActiveChatId,
+          chatId,
           mediaType,
           fileBase64: b64,
           fileName: file.name,
@@ -2866,6 +2876,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
           schedule: scheduledTimestamp || undefined,
         });
 
+        if (!isActiveChat()) return;
         clearStagedAttachment();
         if (textInput) {
           textInput.value = '';
@@ -2881,7 +2892,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
         } else {
           showToast('附件已成功发送', 'success');
         }
-        await loadClientMessages(state.clientActiveChatId, true);
+        await loadClientMessages(chatId, true);
       } catch (err) {
         showToast(`发送附件失败: ${err.message}`, 'error');
       }
@@ -2899,7 +2910,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
       if (window.chatWs && window.chatWs.isConnected()) {
         await window.chatWs.sendRpc('edit_message', {
           instId,
-          chatId: state.clientActiveChatId,
+          chatId,
           messageId: editMsgId,
           text,
           options: {
@@ -2908,7 +2919,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
         });
       } else {
         await api(`/api/instances/${instId}/account/edit`, 'POST', {
-          chatId: state.clientActiveChatId,
+          chatId,
           messageId: editMsgId,
           text,
           options: {
@@ -2917,12 +2928,13 @@ async function sendClientMessage(scheduledTimestamp = null) {
         });
       }
 
+      if (!isActiveChat()) return;
       if (textInput) {
         textInput.value = '';
         autoResizeTextarea(textInput);
       }
       showToast('消息已成功修改', 'success');
-      await loadClientMessages(state.clientActiveChatId, true);
+      await loadClientMessages(chatId, true);
       return;
     } catch (err) {
       showToast(`编辑消息失败: ${err.message}`, 'error');
@@ -2960,7 +2972,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
     if (window.chatWs && window.chatWs.isConnected()) {
       sentRes = await window.chatWs.sendRpc('send_message', {
         instId,
-        chatId: state.clientActiveChatId,
+        chatId,
         text,
         options: {
           parseMode: parseMode === 'plain' ? undefined : parseMode,
@@ -2971,7 +2983,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
       });
     } else {
       sentRes = await api(`/api/instances/${instId}/account/send`, 'POST', {
-        chatId: state.clientActiveChatId,
+        chatId,
         text,
         options: {
           parseMode: parseMode === 'plain' ? undefined : parseMode,
@@ -2982,6 +2994,7 @@ async function sendClientMessage(scheduledTimestamp = null) {
       });
     }
 
+    if (!isActiveChat()) return;
     const local = state.clientMessages.find((m) => m.id === tempId);
     if (local) {
       if (sentRes && sentRes.id) {
@@ -2991,11 +3004,12 @@ async function sendClientMessage(scheduledTimestamp = null) {
       }
     }
     renderClientMessages(true);
-    loadClientMessages(state.clientActiveChatId, true);
+    loadClientMessages(chatId, true);
     if (scheduledTimestamp) {
       showToast(`已成功设定定时消息 (${new Date(scheduledTimestamp * 1000).toLocaleString()})`, 'success');
     }
   } catch (err) {
+    if (!isActiveChat()) return;
     const local = state.clientMessages.find((m) => m.id === tempId);
     if (local) {
       local.status = 'failed';
@@ -6698,6 +6712,8 @@ class ChatWSManager {
           } catch (_) {}
         }
       }
+      // Events for another account must not alter the selected account's list.
+      if (event.instId !== state.clientSelectedInstance) return;
       // Update snippet in dialog list & bump to top
       const dIndex = state.clientDialogs.findIndex((x) => String(x.id) === String(m.chatId));
       if (dIndex !== -1) {
@@ -6717,7 +6733,7 @@ class ChatWSManager {
     }
 
     // Real-time message edit
-    if (event.type === 'message_edit' && event.message) {
+    if ((event.type === 'message_edit' || event.type === 'message_edited') && event.message) {
       const m = event.message;
       if (
         event.instId === state.clientSelectedInstance &&

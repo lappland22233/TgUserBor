@@ -591,7 +591,7 @@
               <div class="dialogs-header">
                 <div class="search-input-wrapper">
                   <svg class="search-icon"><use href="#icon-search"/></svg>
-                  <input type="text" class="input-control search-input" id="client-dialogs-search" placeholder="搜索联系人、群聊...">
+                  <input type="text" class="input-control search-input" id="client-dialogs-search" placeholder="搜索">
                   <button type="button" class="btn-icon-subtle" id="btn-dialogs-mark-all-read" title="一键全部标记为已读"><svg class="ui-icon-xs"><use href="#icon-check"/></svg></button>
                 </div>
                 <div class="dialogs-tabs">
@@ -621,8 +621,8 @@
                     <div class="chat-avatar" id="client-chat-avatar" style="width: 40px; height: 40px;">TG</div>
                   </div>
                   <div class="chat-title-wrap">
-                    <div class="chat-title" id="client-chat-title">请选择左侧会话</div>
-                    <div class="chat-subtitle" id="client-chat-subtitle">支持与联系人私聊、超级群组、广播频道实时收发</div>
+                    <div class="chat-title" id="client-chat-title">选择聊天</div>
+                    <div class="chat-subtitle" id="client-chat-subtitle">选择一个会话开始聊天</div>
                   </div>
                 </div>
                 <div class="chat-header-actions" id="client-chat-actions" style="display: none;">
@@ -678,7 +678,7 @@
               <div class="chat-messages-container" id="client-messages-container">
                 <div class="chat-placeholder">
                   <svg class="placeholder-icon"><use href="#icon-chat"/></svg>
-                  <p>点击左侧联系人或群组开启实时会话</p>
+                  <p>选择一个聊天开始发送消息</p>
                 </div>
               </div>
 
@@ -773,7 +773,7 @@
 
                   <!-- Center: Textarea with active status tags -->
                   <div class="chat-input-center-wrap">
-                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="输入消息内容... (支持富文本与文件拖入，右键调出功能菜单)" rows="1"></textarea>
+                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="消息" rows="1"></textarea>
                     <div class="chat-input-badges" id="chat-input-badges">
                       <span class="chat-badge-pill" id="badge-silent" style="display: none;" title="当前已开启静默发送">
                         <svg class="ui-icon-xs" style="width:10px;height:10px;"><use href="#icon-broadcast"/></svg> 静默发送
@@ -879,7 +879,7 @@
             </div>
 
             <!-- Right: Telegram Profile, Stories, Shared Media & Tools Drawer -->
-            <div class="client-drawer" id="client-drawer">
+            <div class="client-drawer" id="client-drawer" style="display: none;">
               <div class="drawer-header">
                 <div class="drawer-tabs">
                   <button class="drawer-tab active" data-tab="profile" id="tab-btn-profile">资料/动态</button>

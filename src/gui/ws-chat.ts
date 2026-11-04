@@ -176,6 +176,7 @@ export class ChatWSGateway {
         if (!inst) throw new Error(`Instance "${instId}" not found`);
         const { chatId, messageIds, revoke = true } = params;
         const res = await inst.accountAction('delete_messages', { chatId, messageIds, revoke });
+        this.cache.deleteMessages(instId, chatId, messageIds);
         this.broadcastStream({ type: 'message_delete', instId, chatId, messageIds });
         return res;
       }
@@ -329,6 +330,12 @@ export class ChatWSGateway {
       if (event.type === 'new_message' && event.instId && event.message) {
         // 更新缓存
         this.cache.prependMessage(event.instId, event.message.chatId, event.message);
+      }
+      if (event.type === 'message_edited' && event.instId && event.message) {
+        this.cache.updateMessage(event.instId, event.message.chatId, event.message);
+      }
+      if (event.type === 'message_delete' && event.instId && event.chatId && Array.isArray(event.messageIds)) {
+        this.cache.deleteMessages(event.instId, event.chatId, event.messageIds);
       }
       this.broadcastStream(event);
     });

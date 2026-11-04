@@ -98,7 +98,11 @@ function chatFromEntity(c: Api.Chat | Api.Channel | Api.User): ChatRef {
   const rawId = (c as any).id.toString();
   const isChannel = c instanceof Api.Channel || (c as any).className === 'Channel';
   // Supergroups and Broadcast Channels in Telegram have -100 prefix
-  const id = isChannel && !rawId.startsWith('-100') ? Number(`-100${rawId}`) : Number(rawId);
+  // Dialog IDs use Telegram's marked peer IDs for both channels and basic groups.
+  // Keeping basic groups positive makes live events impossible to match to dialogs.
+  const id = isChannel && !rawId.startsWith('-100')
+    ? Number(`-100${rawId}`)
+    : !isChannel && !rawId.startsWith('-') ? -Number(rawId) : Number(rawId);
   const type: ChatType = c instanceof Api.Chat ? mapChatType(c.className) : 'supergroup';
   return {
     id,
