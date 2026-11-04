@@ -783,20 +783,18 @@
                     </div>
                   </div>
 
-                  <!-- Right: One-Click Menu Button + Voice Button + Send Button -->
+                  <!-- Right: Menu + Schedule + Morph Button (mic↔send) -->
                   <div class="chat-input-right-actions">
-                    <button type="button" class="btn-icon-subtle chat-more-btn" id="btn-chat-more-menu" title="一键菜单与发送设置 (或右键输入框)">
+                    <button type="button" class="btn-icon-subtle chat-more-btn" id="btn-chat-more-menu" title="快捷菜单与发送设置">
                       <svg class="ui-icon"><use href="#icon-dots-vertical"/></svg>
                     </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn chat-voice-btn" id="btn-client-voice-record" title="录制语音消息">
-                      <svg class="ui-icon"><use href="#icon-microphone"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送消息 (Schedule Message)">
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送">
                       <svg class="ui-icon"><use href="#icon-clock"/></svg>
                     </button>
-                    <button class="btn btn-primary btn-chat-send" id="btn-client-send-msg" title="发送消息">
-                      <svg class="ui-icon"><use href="#icon-send"/></svg>
-                      <span>发送</span>
+                    <!-- Unified morph button: mic when empty, send when text -->
+                    <button class="chat-send-morph" id="btn-chat-morph" title="发送消息 / 录制语音">
+                      <svg class="morph-icon morph-mic"><use href="#icon-microphone"/></svg>
+                      <svg class="morph-icon morph-send"><use href="#icon-send"/></svg>
                     </button>
                   </div>
                 </div>
@@ -1049,6 +1047,7 @@
               <div class="drawer-pane expr-pane active" id="drawer-tab-emoji">
                 <div class="emoji-picker-container">
                   <div class="emoji-category-bar" id="emoji-category-bar">
+                    <button class="emoji-cat-btn" data-cat="recent" title="最近使用">🕐</button>
                     <button class="emoji-cat-btn active" data-cat="smileys" title="表情与情感">😀</button>
                     <button class="emoji-cat-btn" data-cat="gestures" title="手势与人物">👍</button>
                     <button class="emoji-cat-btn" data-cat="animals" title="动物与自然">🐱</button>
