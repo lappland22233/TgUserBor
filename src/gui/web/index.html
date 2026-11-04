@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TGuserBOT 控制台</title>
   <script>document.documentElement.dataset.theme=localStorage.getItem('tgbot_ui_theme')||'dark';if(document.documentElement.dataset.theme==='system'){document.documentElement.dataset.theme=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}</script>
-  <link rel="stylesheet" href="themes.css?v=1">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="themes.css?v=2">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
   <!-- SVG Symbols Sprite (Professional Vector Icons, Zero Emojis) -->
@@ -365,6 +365,10 @@
           <p>控制台架构系统</p>
         </div>
       </div>
+      <button class="sidebar-collapse-btn" id="btn-sidebar-collapse" type="button" title="收起侧栏" aria-label="收起侧栏" aria-expanded="true">
+        <svg class="ui-icon"><use href="#icon-chevron-left"/></svg>
+        <span class="collapse-label">收起侧栏</span>
+      </button>
       <ul class="nav-links">
         <li class="nav-item active" data-view="dashboard">
           <span class="nav-icon"><svg class="ui-icon"><use href="#icon-dashboard"/></svg></span>
@@ -773,7 +777,7 @@
 
                   <!-- Center: Textarea with active status tags -->
                   <div class="chat-input-center-wrap">
-                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="消息" rows="1"></textarea>
+                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="消息" title="支持富文本、文件拖入，右键调出功能菜单" rows="1"></textarea>
                     <div class="chat-input-badges" id="chat-input-badges">
                       <span class="chat-badge-pill" id="badge-silent" style="display: none;" title="当前已开启静默发送">
                         <svg class="ui-icon-xs" style="width:10px;height:10px;"><use href="#icon-broadcast"/></svg> 静默发送
