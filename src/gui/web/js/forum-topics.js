@@ -133,7 +133,6 @@ window.ForumTopics = (() => {
     const iconColor = Number(topic.iconColor);
     title.style.color = Number.isSafeInteger(iconColor) && iconColor > 0 && iconColor <= 0xffffff
       ? `#${iconColor.toString(16).padStart(6, '0')}` : '';
-    title.dataset = title.dataset || {};
     title.dataset.topicIconEmojiId = typeof topic.iconEmojiId === 'string' && /^[1-9]\d{0,19}$/.test(topic.iconEmojiId) ? topic.iconEmojiId : '';
     if (topic.closed) status.textContent = '此话题已关闭，只能查看历史消息。';
     const createButton = modal.querySelector('[data-create]'); if (createButton) createButton.hidden = true;
@@ -263,7 +262,6 @@ window.ForumTopics = (() => {
       if (typeof update.title === 'string') { ctx.topic.title = update.title; title.textContent = update.title || '话题'; }
       if (typeof update.iconEmojiId === 'string' && /^[1-9]\d{0,19}$/.test(update.iconEmojiId)) {
         ctx.topic.iconEmojiId = update.iconEmojiId;
-        title.dataset = title.dataset || {};
         title.dataset.topicIconEmojiId = update.iconEmojiId;
       }
       if (typeof update.closed === 'boolean') { ctx.topic.closed = update.closed; composer.hidden = update.closed; }

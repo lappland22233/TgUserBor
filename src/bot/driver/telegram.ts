@@ -15,7 +15,7 @@ import { EditedMessage, EditedMessageEvent } from 'telegram/events/EditedMessage
 import { DeletedMessage } from 'telegram/events/DeletedMessage';
 import { CallbackQuery as TelegramCallbackQuery } from 'telegram/events/CallbackQuery';
 import { getBotCallbackData, mapBotKeyboard, mapBotReplyKeyboard } from './bot-keyboard';
-import { downloadMediaToCache, mediaCacheNamespace, withAwaitedFileWriter } from './media-cache';
+import { downloadMediaToCache, invalidateMessageMediaCache, mediaCacheNamespace, withAwaitedFileWriter } from './media-cache';
 import { getMediaStreamInfo, getMediaStreamChunk, type MediaStreamInfo } from './media-stream';
 import { mapChatRawUpdate } from './update-mapping';
 import { mapStoryMediaAreas } from './story-media-areas';
@@ -1488,6 +1488,7 @@ export class TelegramDriver implements BotAdapter {
         typeof caption !== 'string' || caption.length > 1024 || ![undefined, 'plain', 'markdown', 'html'].includes(parseMode)) {
       throw new Error('Invalid message media replacement');
     }
+    if (!this.selfId) throw new Error('Telegram account is not ready');
     const peer = this.resolvePeer(chatId);
     const messages = await this.client.getMessages(peer, { ids: [messageId] });
     const message = messages[0] as any;
@@ -1504,6 +1505,12 @@ export class TelegramDriver implements BotAdapter {
     await this.client.invoke(new Api.messages.EditMessage({
       peer, id: messageId, media, message: formattedCaption, entities,
     }));
+    try {
+      const namespace = mediaCacheNamespace(this.config.telegram.sessionPath, this.selfId);
+      await invalidateMessageMediaCache(path.resolve('data', 'cache', 'media'), namespace, chatId, messageId);
+    } catch (error: any) {
+      this.logger.warn({ chatId, messageId, error: error?.message }, 'Failed to invalidate replaced message media cache');
+    }
   }
 
   async deleteMessage(chatId: number, messageId: number): Promise<void> {
@@ -3084,6 +3091,7 @@ export class TelegramDriver implements BotAdapter {
   async getMessages(chatId: number, options?: GetMessagesOptions): Promise<IncomingMessage[]> {
     const peer = this.resolvePeer(chatId);
     let msgs: any[];
+    let savedMessageEntities: Map<string, any> | undefined;
     if (options?.savedReaction) {
       if (!this.selfId || Number(chatId) !== this.selfId) throw new Error('Saved tags are only available in Saved Messages');
       const reaction = savedTagReaction(options.savedReaction);
@@ -3101,6 +3109,10 @@ export class TelegramDriver implements BotAdapter {
         minId: 0,
         hash: bigInt(0),
       })) as any;
+      savedMessageEntities = new Map<string, any>();
+      for (const entity of [...(result?.users || []), ...(result?.chats || [])]) {
+        try { savedMessageEntities.set(getPeerId(entity), entity); } catch { /* ignore incomplete entities */ }
+      }
       msgs = Array.isArray(result?.messages) ? result.messages : [];
     } else {
       msgs = await this.client.getMessages(peer, {
@@ -3125,6 +3137,10 @@ export class TelegramDriver implements BotAdapter {
     const result: IncomingMessage[] = [];
     for (const m of msgs) {
       if (m && m instanceof Api.Message) {
+        if (savedMessageEntities) {
+          (m as any)._finishInit(this.client, savedMessageEntities, undefined);
+          (m as any)._entities = savedMessageEntities;
+        }
         const mapped = await this.mapMessage(m, canClosePoll);
         if (mapped) result.push(mapped);
       }

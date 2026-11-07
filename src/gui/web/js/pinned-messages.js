@@ -38,7 +38,7 @@ window.PinnedMessages = (() => {
     modal.querySelector('[data-unpin-all]').onclick = () => unpinMessage();
     modal.onclick = event => { if (event.target === modal) close(); };
     modal.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
-    more.onclick = () => loadPage(true);
+    more.onclick = () => loadPage(Boolean(offsetId));
     button?.addEventListener('click', open);
   }
 

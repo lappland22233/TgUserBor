@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const bigInt = require('big-integer');
 const { Api } = require('telegram');
+const { EntityCache } = require('telegram/entityCache');
 const { TelegramDriver } = require('../dist/bot/driver/telegram');
 const { handleApiRoute } = require('../dist/gui/api');
 
@@ -45,6 +46,22 @@ test('Saved Messages tag searches use Telegram savedReaction pagination and only
   assert.equal(request.savedReaction[0].emoticon, '📚');
   await assert.rejects(driver.getMessages(88, { savedReaction: { type: 'emoji', value: '📚' } }), /Saved Messages/);
   await assert.rejects(driver.getMessages(77, { savedReaction: { type: 'emoji', value: 'hello' } }), /Invalid saved message tag/);
+});
+
+test('Saved Messages tag search initializes returned Telegram messages with response entities', async () => {
+  const self = new Api.User({ id: bigInt(77), firstName: 'Me', accessHash: bigInt(770) });
+  const alice = new Api.User({ id: bigInt(42), firstName: 'Alice', accessHash: bigInt(420) });
+  const message = new Api.Message({ id: 19, peerId: new Api.PeerUser({ userId: bigInt(77) }),
+    fromId: new Api.PeerUser({ userId: bigInt(42) }), date: 1, message: 'tagged result' });
+  const driver = Object.create(TelegramDriver.prototype);
+  driver.selfId = 77;
+  driver.selfUser = { id: 77, firstName: 'Me' };
+  driver.client = { _entityCache: new EntityCache(), invoke: async () => ({ messages: [message], users: [self, alice], chats: [] }) };
+  const results = await driver.getMessages(77, { savedReaction: { type: 'emoji', value: '📚' } });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].text, 'tagged result');
+  assert.equal(results[0].chat.id, 77);
+  assert.equal(results[0].from.id, 42);
 });
 
 test('editing and removing a Saved Messages tag uses Telegram UpdateSavedReactionTag', async () => {

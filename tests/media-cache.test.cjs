@@ -5,7 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
-const { downloadMediaToCache, mediaCacheNamespace, withAwaitedFileWriter } = require('../dist/bot/driver/media-cache');
+const { downloadMediaToCache, invalidateMessageMediaCache, mediaCacheNamespace, withAwaitedFileWriter } = require('../dist/bot/driver/media-cache');
 const { handleApiRoute } = require('../dist/gui/api');
 const { TelegramDriver } = require('../dist/bot/driver/telegram');
 
@@ -15,6 +15,21 @@ test('media namespace isolates both instances and accounts', () => {
   assert.notEqual(mediaCacheNamespace('/tmp/session-a', 1), mediaCacheNamespace('/tmp/session-b', 1));
   assert.notEqual(mediaCacheNamespace('/tmp/session-a', 1), mediaCacheNamespace('/tmp/session-a', 2));
   assert.equal(mediaCacheNamespace('/tmp/session-a', 1), mediaCacheNamespace('/tmp/session-a', 1));
+});
+
+test('message cache invalidation removes full media and thumbnails without matching adjacent IDs', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'tg-media-invalidate-'));
+  try {
+    const namespace = mediaCacheNamespace('/tmp/session-a', 77);
+    const names = [
+      `${namespace}_77_55.jpg`, `${namespace}_77_55_thumb.jpg`, `${namespace}_77_55_paid_0.webm`,
+      `${namespace}_77_550.jpg`, `${namespace}_78_55.jpg`, `${mediaCacheNamespace('/tmp/session-b', 77)}_77_55.jpg`,
+    ];
+    await Promise.all(names.map(name => fs.writeFile(path.join(root, name), 'cached')));
+    await invalidateMessageMediaCache(root, namespace, 77, 55);
+    assert.deepEqual((await fs.readdir(root)).sort(), names.slice(3).sort());
+    await assert.rejects(invalidateMessageMediaCache(root, namespace, 77, 0), /Invalid media cache target/);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
 
 test('concurrent media requests never observe partial downloads', async () => {

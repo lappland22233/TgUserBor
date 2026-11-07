@@ -75,6 +75,22 @@ test('pinned list paginates and opens the selected message as a historical ancho
   assert.deepEqual(h.navigations, [[-100123, 9, 1699990000]]);
 });
 
+test('retry reloads the first pinned-message page after its initial request fails', async () => {
+  const h = setup();
+  h.button.handlers.click();
+  h.requests[0].reject(new Error('offline'));
+  await tick();
+  const more = h.parts['.pinned-messages-more'];
+  assert.equal(more.textContent, '重试');
+  more.onclick();
+  assert.equal(h.requests.length, 2);
+  assert.match(h.requests[1].url, /pinned-messages/);
+  assert.doesNotMatch(h.requests[1].url, /offsetId=/);
+  h.requests[1].resolve({ total: 1, messages: [{ id: 99, text: 'recovered' }] });
+  await tick();
+  assert.equal(h.parts['.pinned-messages-list'].children.length, 1);
+});
+
 test('account switch discards an in-flight pinned message response', async () => {
   const h = setup();
   h.window.PinnedMessages.open();

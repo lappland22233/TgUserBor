@@ -11,6 +11,24 @@ export function mediaCacheNamespace(sessionPath: string, userId: number): string
 // requests within a worker share one download and all wait for completion.
 const downloads = new Map<string, Promise<boolean>>();
 
+/** Remove cached media variants for one message without matching adjacent IDs. */
+export async function invalidateMessageMediaCache(directory: string, namespace: string, chatId: number, messageId: number): Promise<void> {
+  if (!/^[a-f0-9]{24}$/.test(namespace) || !Number.isSafeInteger(chatId) || chatId === 0 ||
+      !Number.isSafeInteger(messageId) || messageId <= 0) throw new Error('Invalid media cache target');
+  let entries: import('fs').Dirent[];
+  try { entries = await fs.readdir(directory, { withFileTypes: true }); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return;
+    throw error;
+  }
+  const prefix = `${namespace}_${chatId}_${messageId}`;
+  await Promise.all(entries.filter(entry => {
+    if (!entry.isFile() || !entry.name.startsWith(prefix)) return false;
+    const suffix = entry.name.slice(prefix.length);
+    return suffix.startsWith('_') || suffix.startsWith('.');
+  }).map(entry => fs.rm(path.join(directory, entry.name), { force: true })));
+}
+
 export async function downloadMediaToCache(target: string, download: (temporaryPath: string) => Promise<unknown>, maxAgeMs?: number): Promise<boolean> {
   const exists = async () => {
     try {
