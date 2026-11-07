@@ -323,8 +323,9 @@ class NetworkScheduler {
   }
 }
 
-// Keep capacity for interactive requests when many media items are visible.
-const scheduler = new NetworkScheduler(2, 1);
+// Two image requests can progress together while the third slot remains available
+// for interactive API work under the browser's small per-origin connection pool.
+const scheduler = new NetworkScheduler(3, 2);
 
 function initManagedImages() {
   const selector = 'img[data-network-src], video[data-network-poster]';
