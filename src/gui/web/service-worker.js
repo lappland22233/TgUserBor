@@ -62,10 +62,13 @@ self.addEventListener('fetch', event => {
       }
       return response;
     } catch (error) {
-      const cached = await caches.match(request);
+      // An outgoing worker can finish a fetch after activation and recreate
+      // its old cache. Only the current shell version is safe to serve.
+      const cache = await caches.open(SHELL_CACHE);
+      const cached = await cache.match(request);
       if (cached) return cached;
       if (request.mode === 'navigate') {
-        const shell = await caches.match(new URL('./', scope).href);
+        const shell = await cache.match(new URL('./', scope).href);
         if (shell) return shell;
       }
       throw error;

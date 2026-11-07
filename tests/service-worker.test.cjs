@@ -7,12 +7,14 @@ const vm = require('node:vm');
 function harness() {
   const handlers = {}, stores = new Map(), requests = [];
   const requestUrl = request => typeof request === 'string' ? request : request instanceof URL ? request.href : request.url;
-  const cache = {
-    async put(request, response) { stores.get('tguserbot-shell-v2').set(requestUrl(request), response.clone()); },
-    async match(request) { return stores.get('tguserbot-shell-v2').get(requestUrl(request))?.clone(); },
-  };
   const caches = {
-    async open(name) { if (!stores.has(name)) stores.set(name, new Map()); return cache; },
+    async open(name) {
+      if (!stores.has(name)) stores.set(name, new Map());
+      return {
+        async put(request, response) { stores.get(name).set(requestUrl(request), response.clone()); },
+        async match(request) { return stores.get(name).get(requestUrl(request))?.clone(); },
+      };
+    },
     async match(request) {
       const key = requestUrl(request);
       for (const store of stores.values()) if (store.has(key)) return store.get(key).clone();
@@ -65,4 +67,25 @@ test('service worker serves cached static shell offline and never intercepts API
   assert.equal(intercepted, false);
   h.handlers.fetch({ request: { method: 'GET', url: 'https://cdn.example/app.js', mode: 'cors' }, respondWith: () => { intercepted = true; } });
   assert.equal(intercepted, false);
+});
+
+
+test('offline responses ignore an old cache recreated after activation', async () => {
+  const h = harness();
+  h.stores.set('tguserbot-shell-v1', new Map([
+    ['http://localhost:3000/bundle.js', new Response('old bundle')],
+    ['http://localhost:3000/', new Response('old shell')],
+    ['http://localhost:3000/old-only.js', new Response('old only')],
+  ]));
+  let work;
+  h.handlers.install({ waitUntil: promise => { work = promise; } });
+  await work;
+  h.setOffline(true);
+  let response;
+  h.handlers.fetch({ request: { method: 'GET', url: 'http://localhost:3000/bundle.js', mode: 'cors' }, respondWith: promise => { response = promise; } });
+  assert.equal(await (await response).text(), 'asset:/bundle.js');
+  h.handlers.fetch({ request: { method: 'GET', url: 'http://localhost:3000/other', mode: 'navigate' }, respondWith: promise => { response = promise; } });
+  assert.match(await (await response).text(), /bundle\.js/);
+  h.handlers.fetch({ request: { method: 'GET', url: 'http://localhost:3000/old-only.js', mode: 'cors' }, respondWith: promise => { response = promise; } });
+  await assert.rejects(response, /offline/);
 });
