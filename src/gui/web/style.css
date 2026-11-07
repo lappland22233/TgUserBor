@@ -10600,6 +10600,13 @@ body.sidebar-collapsed .sidebar-footer .version-tag {
   }
 }
 
+/* The single-pane range extends beyond the global mobile-only breakpoint. */
+@media (min-width: 901px) and (max-width: 925px) {
+  .app-container.telegram-client-mode #view-client #btn-client-back-dialogs {
+    display: inline-flex !important;
+  }
+}
+
 /* Telegram Desktop-inspired chat chrome and a single-row message composer. */
 html[data-theme="dark"] .app-container.telegram-client-mode {
   --bg-app: #0e1621;

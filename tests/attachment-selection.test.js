@@ -77,3 +77,43 @@ test('drag-drop stages the selected file for the current composer', () => {
   h.callbacks.drop({ preventDefault() {}, stopPropagation() {}, dataTransfer: { files: [file] } });
   assert.equal(h.state.clientStagedFile, file);
 });
+
+test('clicking a dice button child leaves the picker open until an outside click', () => {
+  let documentClick;
+  const buttonChild = {};
+  const diceOption = { focus() {} };
+  const diceButton = {
+    setAttribute() {},
+    focus() {},
+    contains(target) { return target === buttonChild; },
+  };
+  const dicePicker = {
+    hidden: true,
+    querySelector() { return diceOption; },
+    querySelectorAll() { return []; },
+    contains() { return false; },
+    addEventListener() {},
+  };
+  const elements = {
+    'btn-chat-attach': {}, 'chat-file-input': { files: [], value: '' },
+    'btn-cancel-attachment': {}, 'client-input-bar': { addEventListener() {} },
+    'chat-attachment-strip': { style: {} }, 'attachment-chip-name': {}, 'attachment-chip-size': {},
+    'client-message-textarea': { focus() {} }, 'btn-chat-dice': diceButton, 'chat-dice-picker': dicePicker,
+  };
+  const context = vm.createContext({
+    state: { clientActiveChatId: 12 },
+    document: {
+      getElementById: id => elements[id] || null,
+      addEventListener: (type, handler) => { if (type === 'click') documentClick = handler; },
+    },
+    formatBytes: () => '1 MB', showToast() {}, cancelStagedAttachment() {},
+  });
+  vm.runInContext(code + '\nthis.init = initChatDragAndDrop;', context);
+  context.init();
+
+  diceButton.onclick();
+  documentClick({ target: buttonChild });
+  assert.equal(dicePicker.hidden, false);
+  documentClick({ target: {} });
+  assert.equal(dicePicker.hidden, true);
+});

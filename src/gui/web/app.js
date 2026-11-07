@@ -12288,7 +12288,7 @@ function initChatDragAndDrop() {
       };
     });
     document.addEventListener('click', event => {
-      if (!dicePicker.hidden && !dicePicker.contains(event.target) && event.target !== diceButton) closeDicePicker();
+      if (!dicePicker.hidden && !dicePicker.contains(event.target) && !diceButton.contains(event.target)) closeDicePicker();
     });
     dicePicker.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.preventDefault(); closeDicePicker(); diceButton.focus(); }
