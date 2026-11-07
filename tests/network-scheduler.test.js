@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('src/gui/web/app.js', 'utf8');
 const start = source.indexOf('class NetworkScheduler {');
-const end = source.indexOf('\n// Keep capacity for interactive', start);
+const end = source.indexOf('\n// Two image requests can progress', start);
 const apiStart = source.indexOf('async function api(');
 const apiEnd = source.indexOf('\n// SSE Connection', apiStart);
 if ([start, end, apiStart, apiEnd].some(index => index < 0)) throw new Error('Cannot locate network scheduler');
@@ -27,20 +27,32 @@ function image() {
   };
 }
 
-test('visible media uses one slot and leaves another for interactive requests', async () => {
+test('two visible images load in parallel while an interactive request keeps the third slot', async () => {
   const { NetworkScheduler } = harness();
-  const scheduler = new NetworkScheduler(2, 1);
-  const first = image(), second = image();
+  const scheduler = new NetworkScheduler(3, 2);
+  const first = image(), second = image(), third = image();
   const a = scheduler.loadVisibleImage(first, '/first');
   const b = scheduler.loadVisibleImage(second, '/second');
+  const c = scheduler.loadVisibleImage(third, '/third');
   assert.equal(first.src, '/first');
   assert.equal(first.loading, 'eager');
-  assert.equal(second.src, '');
-  assert.equal(await scheduler.enqueue(async () => 'api', 0), 'api');
-  first.emit('load'); await a; await tick();
   assert.equal(second.src, '/second');
   assert.equal(second.loading, 'eager');
+  assert.equal(third.src, '');
+  const apiBody = deferred();
+  let apiStarted = false;
+  const api = scheduler.enqueue(async () => { apiStarted = true; return apiBody.promise; }, 0);
+  await tick();
+  assert.equal(apiStarted, true);
+  assert.equal(third.src, '');
+  apiBody.resolve('api');
+  assert.equal(await api, 'api');
+  await tick();
+  assert.equal(third.src, '');
+  first.emit('load'); await a; await tick();
+  assert.equal(third.src, '/third');
   second.emit('load'); await b;
+  third.emit('load'); await c;
 });
 
 test('detached images are cancelled and queued stale images are skipped', async () => {

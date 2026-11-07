@@ -10988,11 +10988,39 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
   width: 148px;
   max-width: 148px;
   min-width: 96px !important;
-  padding: 0 8px;
+  height: 40px;
+  padding: 0 24px 0 8px;
   border: 0;
-  background: transparent;
+  background-color: transparent;
+  background-position: right 8px center;
   color: var(--text-primary);
   font-size: 14px;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+.app-container.telegram-client-mode #view-client #client-account-select:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+.app-container.telegram-client-mode #view-client #client-account-select:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.app-container.telegram-client-mode #view-client #client-account-select option {
+  background: var(--client-surface);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .app-container.telegram-client-mode #view-client #client-account-select {
+  color-scheme: dark;
+}
+
+[data-theme="light"] .app-container.telegram-client-mode #view-client #client-account-select {
+  color-scheme: light;
 }
 
 .app-container.telegram-client-mode #view-client .dialogs-header {
@@ -11334,6 +11362,10 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
   padding: 16px max(16px, calc((100% - 696px) / 2));
   gap: 4px;
   background: transparent;
+}
+
+.app-container.telegram-client-mode #view-client .client-layout:not(:has(> .client-profile-pane.open)):not(:has(> .client-drawer.open)) .chat-messages-container {
+  padding-inline: 16px;
 }
 
 .app-container.telegram-client-mode #view-client .chat-placeholder {
