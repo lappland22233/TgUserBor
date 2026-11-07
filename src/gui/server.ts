@@ -140,7 +140,7 @@ export class GUIServer {
       // five-minute request timeout, especially on a slow local network.
       this.server.requestTimeout = 2 * 60 * 60_000;
 
-      // WebSocket Upgrade: 支持最大双 WS 架构 (/ws/chat-stream 和 /ws/chat-rpc)
+      // WebSocket Upgrade: one multiplexed connection, with legacy endpoints retained
       this.server.on('upgrade', (req, socket, head) => {
         const allowLan = process.env.GUI_ALLOW_LAN !== 'false';
         const trustProxy = process.env.GUI_TRUST_PROXY === 'true';
@@ -157,6 +157,13 @@ export class GUIServer {
         }
 
         const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+        if (url.pathname === '/ws/chat') {
+          this.wsGateway.chatWss.handleUpgrade(req, socket, head, (ws) => {
+            this.wsGateway.chatWss.emit('connection', ws, req);
+          });
+          return;
+        }
+
         if (url.pathname === '/ws/chat-stream') {
           this.wsGateway.streamWss.handleUpgrade(req, socket, head, (ws) => {
             this.wsGateway.streamWss.emit('connection', ws, req);

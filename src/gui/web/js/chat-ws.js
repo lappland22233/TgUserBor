@@ -1,14 +1,11 @@
 'use strict';
 
 // ==========================================
-// Dual WebSocket Chat Manager (Strictly at most 2 WebSockets)
-// Connection 1: /ws/chat-stream (Server-push real-time event stream)
-// Connection 2: /ws/chat-rpc (High-speed interactive RPC & Cache queries)
+// Chat events and RPC share one connection, leaving more capacity for HTTP.
 // ==========================================
 class ChatWSManager {
   constructor() {
-    this.streamWs = null;
-    this.rpcWs = null;
+    this.ws = null;
     this.rpcCallbacks = new Map();
     this.rpcIdCounter = 0;
     this.reconnectTimer = null;
@@ -23,64 +20,52 @@ class ChatWSManager {
 
   connect() {
     this.isManualClosed = false;
+    if (this.ws && this.ws.readyState <= WebSocket.OPEN) return;
+    // A closing socket can still have requests in flight. Do not let its
+    // eventual close clear requests made on the replacement.
+    if (this.ws) {
+      this.ws = null;
+      this.rejectPending('Connection closed');
+      this.needsResync = true;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = location.host;
-
-    // --- 1. Real-time Stream WS (/ws/chat-stream) ---
-    if (!this.streamWs || this.streamWs.readyState > WebSocket.OPEN) try {
-      const socket = this.streamWs = new WebSocket(`${proto}//${host}/ws/chat-stream`);
+    try {
+      const socket = this.ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
       socket.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data);
-          this.handleStreamEvent(event);
-        } catch (_) {}
-      };
-      socket.onerror = () => {};
-      socket.onopen = () => this.resyncIfReady();
-      socket.onclose = () => {
-        if (this.streamWs !== socket) return;
-        this.streamWs = null;
-        if (!this.isManualClosed) {
-          this.needsResync = true;
-          this.scheduleReconnect();
-        }
-      };
-    } catch (_) { this.scheduleReconnect(); }
-
-    // --- 2. RPC Channel WS (/ws/chat-rpc) ---
-    if (!this.rpcWs || this.rpcWs.readyState > WebSocket.OPEN) try {
-      // A closing socket can still have requests in flight. Its eventual
-      // close event must not clear requests made on its replacement.
-      if (this.rpcWs) this.rejectPending('Connection closed');
-      const socket = this.rpcWs = new WebSocket(`${proto}//${host}/ws/chat-rpc`);
-      socket.onmessage = (e) => {
+        if (this.ws !== socket) return;
         try {
           const msg = JSON.parse(e.data);
           if (msg.id && this.rpcCallbacks.has(msg.id)) {
             const cb = this.rpcCallbacks.get(msg.id);
             this.rpcCallbacks.delete(msg.id);
             clearTimeout(cb.timeout);
-            if (msg.success) {
-              cb.resolve(msg.data);
-            } else {
-              cb.reject(new Error(msg.error || 'RPC action failed'));
-            }
+            if (msg.success) cb.resolve(msg.data);
+            else cb.reject(new Error(msg.error || 'RPC action failed'));
+          } else if (msg.type) {
+            this.handleStreamEvent(msg);
           }
         } catch (_) {}
       };
       socket.onerror = () => {};
-      socket.onopen = () => this.resyncIfReady();
+      socket.onopen = () => { if (this.ws === socket) this.resyncIfReady(); };
       socket.onclose = () => {
-        if (this.rpcWs !== socket) return;
-        this.rpcWs = null;
+        if (this.ws !== socket) return;
+        this.ws = null;
         this.rejectPending('Connection closed');
-        if (!this.isManualClosed) this.scheduleReconnect();
+        if (!this.isManualClosed) {
+          this.needsResync = true;
+          this.scheduleReconnect();
+        }
       };
-    } catch (_) { this.scheduleReconnect(); }
+    } catch (_) { this.needsResync = true; this.scheduleReconnect(); }
   }
 
   disconnect() {
-    if (this.streamWs) this.needsResync = true;
+    if (this.ws) this.needsResync = true;
     this.isManualClosed = true;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -94,13 +79,10 @@ class ChatWSManager {
       clearTimeout(this.unknownDeletionTimer);
       this.unknownDeletionTimer = null;
     }
-    if (this.streamWs) {
-      try { this.streamWs.close(); } catch (_) {}
-      this.streamWs = null;
-    }
-    if (this.rpcWs) {
-      try { this.rpcWs.close(); } catch (_) {}
-      this.rpcWs = null;
+    const socket = this.ws;
+    this.ws = null;
+    if (socket) {
+      try { socket.close(); } catch (_) {}
     }
     this.rejectPending('Connection closed');
   }
@@ -114,7 +96,7 @@ class ChatWSManager {
   }
 
   isConnected() {
-    return this.rpcWs && this.rpcWs.readyState === WebSocket.OPEN;
+    return !!this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 
   async markVisibleChatRead() {
@@ -144,8 +126,7 @@ class ChatWSManager {
   }
 
   resyncIfReady() {
-    if (!this.needsResync || this.isManualClosed || !this.streamWs ||
-        this.streamWs.readyState !== WebSocket.OPEN || !this.isConnected()) return;
+    if (!this.needsResync || this.isManualClosed || !this.isConnected()) return;
     this.needsResync = false;
     if (!state.clientSelectedInstance) return;
     // Refresh both views after the stream has missed events. The message
@@ -287,7 +268,7 @@ class ChatWSManager {
 
   sendRpc(action, params = {}) {
     return new Promise((resolve, reject) => {
-      if (!this.rpcWs || this.rpcWs.readyState !== WebSocket.OPEN) {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
         return reject(new Error('RPC WebSocket is not connected'));
       }
       const id = ++this.rpcIdCounter;
@@ -300,7 +281,7 @@ class ChatWSManager {
 
       this.rpcCallbacks.set(id, { resolve, reject, timeout });
       try {
-        this.rpcWs.send(JSON.stringify({ id, action, params }));
+        this.ws.send(JSON.stringify({ id, action, params }));
       } catch (err) {
         clearTimeout(timeout);
         this.rpcCallbacks.delete(id);
