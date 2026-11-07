@@ -262,9 +262,10 @@ class NetworkScheduler {
     }, 2, true);
   }
 
-  loadVisibleImage(img, src) {
+  loadVisibleImage(img, src, shouldStart = () => true, onSkip = () => {}) {
     return this.enqueue(() => new Promise((resolve) => {
       if (!img.isConnected) return resolve(false);
+      if (!shouldStart()) { onSkip(); return resolve(false); }
       const done = (success) => {
         img.removeEventListener('load', onLoad);
         img.removeEventListener('error', onError);
@@ -327,6 +328,8 @@ const scheduler = new NetworkScheduler(2, 1);
 
 function initManagedImages() {
   const selector = 'img[data-network-src], video[data-network-poster]';
+  const stickerVisibility = new WeakMap();
+  const pendingStickers = new WeakSet();
   const load = img => {
     const src = img.dataset.networkSrc || img.dataset.networkPoster;
     if (!src) return;
@@ -335,14 +338,31 @@ function initManagedImages() {
       void scheduler.loadVisiblePoster(img, src);
     } else {
       delete img.dataset.networkSrc;
-      void scheduler.loadVisibleImage(img, src);
+      if (intersection && img.dataset.networkSticker === '1') {
+        pendingStickers.add(img);
+        void scheduler.loadVisibleImage(img, src,
+          () => stickerVisibility.get(img) === true && img.getClientRects().length > 0,
+          () => { img.dataset.networkSrc = src; }
+        ).finally(() => {
+          pendingStickers.delete(img);
+          if (!img.dataset.networkSrc) intersection.unobserve(img);
+        });
+      } else {
+        void scheduler.loadVisibleImage(img, src);
+      }
     }
   };
   const intersection = 'IntersectionObserver' in window
     ? new IntersectionObserver(entries => {
-        for (const entry of entries) if (entry.isIntersecting) {
-          intersection.unobserve(entry.target);
-          load(entry.target);
+        for (const entry of entries) {
+          const img = entry.target;
+          if (img.dataset.networkSticker === '1') {
+            stickerVisibility.set(img, entry.isIntersecting);
+            if (entry.isIntersecting && !pendingStickers.has(img)) load(img);
+          } else if (entry.isIntersecting) {
+            intersection.unobserve(img);
+            load(img);
+          }
         }
       }, { rootMargin: '100px' })
     : null;
@@ -13077,7 +13097,8 @@ function createStickerTile(sticker, instId, favorites) {
   if (sticker.thumbDataUri) image.src = sticker.thumbDataUri;
   else {
     const thumbUrl = `/api/instances/${encodeURIComponent(instId)}/account/sticker-thumb?docId=${encodeURIComponent(sticker.id)}&accessHash=${encodeURIComponent(sticker.accessHash || '')}&fileRef=${encodeURIComponent(sticker.fileReference || '')}`;
-    scheduler.loadImage(image, thumbUrl);
+    image.dataset.networkSrc = thumbUrl;
+    image.dataset.networkSticker = '1';
   }
   button.appendChild(image);
   button.onclick = () => sendSticker(sticker);
@@ -13148,7 +13169,8 @@ async function searchTelegramStickers(offset = 0, append = false) {
       if (sticker.thumbDataUri) image.src = sticker.thumbDataUri;
       else {
         const thumbUrl = `/api/instances/${encodeURIComponent(instId)}/account/sticker-thumb?docId=${encodeURIComponent(sticker.id)}&accessHash=${encodeURIComponent(sticker.accessHash)}&fileRef=${encodeURIComponent(sticker.fileReference || '')}`;
-        scheduler.loadImage(image, thumbUrl);
+        image.dataset.networkSrc = thumbUrl;
+        image.dataset.networkSticker = '1';
       }
       button.appendChild(image);
       button.onclick = () => sendSticker(sticker);
@@ -13267,7 +13289,8 @@ function renderStickerStream() {
         const img = document.createElement('img');
         img.className = 'pack-switcher-img';
         img.alt = 'pack';
-        scheduler.loadImage(img, thumbUrl);
+        img.dataset.networkSrc = thumbUrl;
+        img.dataset.networkSticker = '1';
         switchItem.appendChild(img);
       }
     } else {
@@ -13509,7 +13532,8 @@ async function openStickerPackModal(setId, accessHash, shortName) {
           img.src = s.thumbDataUri;
         } else {
           const thumbUrl = `/api/instances/${instId}/account/sticker-thumb?docId=${s.id}&accessHash=${s.accessHash}&fileRef=${encodeURIComponent(s.fileReference || '')}`;
-          scheduler.loadImage(img, thumbUrl);
+          img.dataset.networkSrc = thumbUrl;
+          img.dataset.networkSticker = '1';
         }
         item.appendChild(img);
 

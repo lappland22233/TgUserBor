@@ -91,3 +91,34 @@ test('video posters share the media queue and release their object URL on remova
   assert.deepEqual(revoked, ['blob:poster']);
   img.emit('load'); await queued;
 });
+
+test('a queued sticker hidden before its turn waits until it is visible again', async () => {
+  let observer;
+  class IntersectionObserver {
+    constructor(callback) { this.callback = callback; observer = this; }
+    observe() {} unobserve() {}
+  }
+  class MutationObserver { constructor() {} observe() {} }
+  const sticker = image();
+  sticker.dataset = { networkSrc: '/sticker', networkSticker: '1' };
+  sticker.nodeType = 1; sticker.matches = () => true; sticker.querySelectorAll = () => [];
+  sticker.getClientRects = () => sticker.visible ? [1] : [];
+  sticker.visible = true;
+  const body = { nodeType: 1, matches: () => false, querySelectorAll: () => [sticker] };
+  const context = harness({ document: { body }, window: { IntersectionObserver }, IntersectionObserver, MutationObserver });
+  context.scheduler = new context.NetworkScheduler(2, 1);
+  const managedStart = source.indexOf('function initManagedImages()');
+  const managedEnd = source.indexOf('// Autoplay media', managedStart);
+  vm.runInContext(source.slice(managedStart, managedEnd) + '\ninitManagedImages();', context);
+  const first = image(); const blocking = context.scheduler.loadVisibleImage(first, '/first');
+  observer.callback([{ target: sticker, isIntersecting: true }]);
+  sticker.visible = false;
+  observer.callback([{ target: sticker, isIntersecting: false }]);
+  first.emit('load'); await blocking; await tick();
+  assert.equal(sticker.src, '');
+  assert.equal(sticker.dataset.networkSrc, '/sticker');
+  sticker.visible = true;
+  observer.callback([{ target: sticker, isIntersecting: true }]);
+  await tick(); assert.equal(sticker.src, '/sticker');
+  sticker.emit('load'); await tick();
+});
