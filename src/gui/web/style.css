@@ -10835,3 +10835,50 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
     height: 38px;
   }
 }
+
+@media (max-width: 520px) {
+  .app-container.telegram-client-mode #view-client .chat-input-right-actions .chat-more-btn {
+    display: flex;
+  }
+
+  .app-container.telegram-client-mode #view-client .miuix-context-menu .chat-effect-select {
+    display: block;
+  }
+}
+
+/* Keep both right-side drawers in view while the client uses its narrow,
+   single-chat layout at 901–925px. */
+@media (min-width: 901px) and (max-width: 925px) {
+  .app-container.telegram-client-mode #view-client .client-drawer:not(.client-expression-drawer) {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    max-height: min(85dvh, 720px);
+    z-index: 1060;
+    border: 1px solid var(--border-hover);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    background: var(--bg-card);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, .45);
+    transform: translateY(105%);
+    transition: transform .25s cubic-bezier(.16, 1, .3, 1);
+  }
+
+  .app-container.telegram-client-mode #view-client .client-drawer:not(.client-expression-drawer).open {
+    transform: translateY(0);
+  }
+
+  .app-container.telegram-client-mode #view-client .client-expression-drawer {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    height: min(75dvh, 640px);
+    max-height: min(80dvh, 720px);
+    z-index: 1061;
+    border: 1px solid var(--border-hover);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    background: var(--bg-card);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .4);
+  }
+}
