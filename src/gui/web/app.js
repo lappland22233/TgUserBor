@@ -12325,6 +12325,10 @@ function initChatContextMenu() {
     btnMore.onclick = toggleMenu;
   }
 
+  menu.querySelector?.('.chat-extra-actions')?.addEventListener('click', (event) => {
+    if (event.target?.closest?.('button')) menu.style.display = 'none';
+  });
+
   const captureChatTarget = () => {
     const instId = state.clientSelectedInstance;
     const chatId = state.clientActiveChatId;

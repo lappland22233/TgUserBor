@@ -834,28 +834,12 @@
 
                 <!-- Main Input Field Row -->
                 <div class="chat-input-field-wrap">
-                  <!-- Left: Stacked paperclip icon above emoji icon -->
+                  <!-- Keep the primary composer compact, as in Telegram Desktop. -->
                   <div class="chat-input-side-actions">
                     <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-attach" title="选择附件并发送 (图片、音频、文件)">
                       <svg class="ui-icon"><use href="#icon-attach"/></svg>
                     </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-video-note" title="录制 Telegram 圆形视频消息" aria-label="录制圆形视频消息">
-                      <svg class="ui-icon"><use href="#icon-video"/></svg>
-                    </button>
                     <input type="file" id="chat-file-input" accept="image/*,video/*,*/*" multiple style="display: none;">
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-poll" title="创建投票与问卷">
-                      <svg class="ui-icon"><use href="#icon-poll"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-dice" title="发送 Telegram 骰子" aria-label="选择并发送骰子" aria-expanded="false" aria-controls="chat-dice-picker">🎲</button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-todo" title="创建 Telegram 待办清单" aria-label="创建待办清单">
-                      <svg class="ui-icon"><use href="#icon-check"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-quick-replies" title="发送快捷回复" hidden>
-                      <svg class="ui-icon"><use href="#icon-reply"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn chat-expr-btn" id="btn-chat-expression-toggle" title="表情、贴纸与 GIF (TG桌面端面板)">
-                      <svg class="ui-icon"><use href="#icon-smile"/></svg>
-                    </button>
                   </div>
                   <div class="chat-dice-picker" id="chat-dice-picker" role="group" aria-label="选择 Telegram 骰子" hidden>
                     <button type="button" data-dice-emoji="🎲" aria-label="掷骰子">🎲</button>
@@ -881,17 +865,11 @@
 
                   <!-- Right: Menu + Schedule + Morph Button (mic↔send) -->
                   <div class="chat-input-right-actions">
-                    <select class="chat-effect-select" id="chat-message-effect" aria-label="消息发送效果" title="Telegram 消息效果" disabled>
-                      <option value="">效果</option>
-                    </select>
+                    <button type="button" class="btn-icon-subtle chat-side-btn chat-expr-btn" id="btn-chat-expression-toggle" title="表情、贴纸与 GIF">
+                      <svg class="ui-icon"><use href="#icon-smile"/></svg>
+                    </button>
                     <button type="button" class="btn-icon-subtle chat-more-btn" id="btn-chat-more-menu" title="快捷菜单与发送设置">
                       <svg class="ui-icon"><use href="#icon-dots-vertical"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-scheduled-messages" title="查看计划消息">
-                      <svg class="ui-icon"><use href="#icon-clock"/></svg>
-                    </button>
-                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送">
-                      <svg class="ui-icon"><use href="#icon-clock"/></svg>
                     </button>
                     <!-- Unified morph button: mic when empty, send when text -->
                     <button class="chat-send-morph" id="btn-chat-morph" title="发送消息 / 录制语音">
@@ -907,6 +885,36 @@
                     <span class="menu-title">快捷工具与设置</span>
                     <span class="menu-hint">支持右键与快捷键</span>
                   </div>
+
+                  <div class="chat-extra-actions" role="group" aria-label="更多发送功能">
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-video-note" title="录制 Telegram 圆形视频消息" aria-label="录制圆形视频消息">
+                      <svg class="ui-icon"><use href="#icon-video"/></svg><span>圆形视频</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-poll" title="创建投票与问卷">
+                      <svg class="ui-icon"><use href="#icon-poll"/></svg><span>投票</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-dice" title="发送 Telegram 骰子" aria-label="选择并发送骰子" aria-expanded="false" aria-controls="chat-dice-picker">
+                      <span aria-hidden="true">🎲</span><span>骰子</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-todo" title="创建 Telegram 待办清单" aria-label="创建待办清单">
+                      <svg class="ui-icon"><use href="#icon-check"/></svg><span>待办</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-quick-replies" title="发送快捷回复" hidden>
+                      <svg class="ui-icon"><use href="#icon-reply"/></svg><span>快捷回复</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-scheduled-messages" title="查看计划消息">
+                      <svg class="ui-icon"><use href="#icon-clock"/></svg><span>计划消息</span>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送">
+                      <svg class="ui-icon"><use href="#icon-clock"/></svg><span>定时发送</span>
+                    </button>
+                    <label class="chat-effect-label" for="chat-message-effect">消息效果
+                      <select class="chat-effect-select" id="chat-message-effect" aria-label="消息发送效果" title="Telegram 消息效果" disabled>
+                        <option value="">默认</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="menu-divider"></div>
 
                   <!-- Formatting Quick Actions -->
                   <div class="menu-fmt-grid">
