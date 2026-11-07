@@ -301,7 +301,7 @@ test('chat events and RPC share one connection and reconnect after disconnect', 
   sockets[0].open();
   const pending = manager.sendRpc('get_dialogs', { instId: 'account-a' });
   const { id } = sockets[0].sent[0];
-  sockets[0].receive({ type: 'new_message', instId: 'account-a', message: { id: 2, chatId: '99', text: 'hello' } });
+  sockets[0].receive({ type: 'new_message', id, instId: 'account-a', message: { id: 2, chatId: '99', text: 'hello' } });
   sockets[0].receive({ id, success: true, data: ['result'] });
   assert.deepEqual(Array.from(await pending), ['result']);
   const interrupted = manager.sendRpc('get_messages', { instId: 'account-a' });

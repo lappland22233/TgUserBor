@@ -39,7 +39,7 @@ class ChatWSManager {
         if (this.ws !== socket) return;
         try {
           const msg = JSON.parse(e.data);
-          if (msg.id && this.rpcCallbacks.has(msg.id)) {
+          if (typeof msg.success === 'boolean' && msg.id && this.rpcCallbacks.has(msg.id)) {
             const cb = this.rpcCallbacks.get(msg.id);
             this.rpcCallbacks.delete(msg.id);
             clearTimeout(cb.timeout);
