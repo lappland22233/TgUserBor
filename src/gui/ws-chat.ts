@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import type { IncomingMessage } from 'http';
 import type { InstanceManager } from '../manager';
 import { CacheManager } from './cache-manager';
 import type { GUIAuth } from './auth';
@@ -7,6 +6,7 @@ import type { GUIAuth } from './auth';
 export class ChatWSGateway {
   public readonly streamWss: WebSocketServer;
   public readonly rpcWss: WebSocketServer;
+  public readonly chatWss: WebSocketServer;
   private readonly manager: InstanceManager;
   private readonly cache: CacheManager;
   private readonly auth?: GUIAuth;
@@ -19,9 +19,25 @@ export class ChatWSGateway {
     // noServer: true lets HTTP server route 'upgrade' events to the appropriate WSS
     this.streamWss = new WebSocketServer({ noServer: true });
     this.rpcWss = new WebSocketServer({ noServer: true });
+    this.chatWss = new WebSocketServer({ noServer: true });
 
     this.initStreamChannel();
     this.initRpcChannel();
+    this.chatWss.on('connection', (ws: WebSocket) => {
+      this.initHeartbeat(ws);
+      this.initRpcHandler(ws);
+      ws.send(JSON.stringify({ type: 'connected', channel: 'chat', timestamp: Date.now() }));
+    });
+    const heartbeat = setInterval(() => {
+      for (const server of [this.streamWss, this.rpcWss, this.chatWss]) {
+        server.clients.forEach((ws: WebSocket) => {
+          if (!(ws as any).isAlive) return ws.terminate();
+          (ws as any).isAlive = false;
+          ws.ping();
+        });
+      }
+    }, 15000);
+    heartbeat.unref();
     this.wireInstanceEvents();
   }
 
@@ -30,24 +46,12 @@ export class ChatWSGateway {
    * 仅向下单向广播高频实时消息、打字中、撤回与更新事件
    */
   private initStreamChannel(): void {
-    this.streamWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-      (ws as any).isAlive = true;
-      ws.on('pong', () => {
-        (ws as any).isAlive = true;
-      });
+    this.streamWss.on('connection', (ws: WebSocket) => {
+      this.initHeartbeat(ws);
 
       // 发送当前初始心跳
       ws.send(JSON.stringify({ type: 'connected', channel: 'chat-stream', timestamp: Date.now() }));
     });
-
-    // 15 秒心跳保活检测
-    setInterval(() => {
-      this.streamWss.clients.forEach((ws: WebSocket) => {
-        if (!(ws as any).isAlive) return ws.terminate();
-        (ws as any).isAlive = false;
-        ws.ping();
-      });
-    }, 15000);
   }
 
   /**
@@ -55,38 +59,37 @@ export class ChatWSGateway {
    */
   private initRpcChannel(): void {
     this.rpcWss.on('connection', (ws: WebSocket) => {
-      (ws as any).isAlive = true;
-      ws.on('pong', () => {
-        (ws as any).isAlive = true;
-      });
-
-      ws.on('message', async (raw: string) => {
-        let msg: any;
-        try {
-          msg = JSON.parse(raw);
-        } catch {
-          return ws.send(JSON.stringify({ error: 'Invalid JSON message' }));
-        }
-
-        const { id, action, params = {} } = msg;
-        if (!id || !action) return;
-
-        try {
-          const result = await this.handleRpcAction(action, params);
-          ws.send(JSON.stringify({ id, success: true, data: result }));
-        } catch (err: any) {
-          ws.send(JSON.stringify({ id, success: false, error: err.message || 'Action failed' }));
-        }
-      });
+      this.initHeartbeat(ws);
+      this.initRpcHandler(ws);
     });
+  }
 
-    setInterval(() => {
-      this.rpcWss.clients.forEach((ws: WebSocket) => {
-        if (!(ws as any).isAlive) return ws.terminate();
-        (ws as any).isAlive = false;
-        ws.ping();
-      });
-    }, 15000);
+  private initHeartbeat(ws: WebSocket): void {
+    (ws as any).isAlive = true;
+    ws.on('pong', () => { (ws as any).isAlive = true; });
+  }
+
+  private initRpcHandler(ws: WebSocket): void {
+    ws.on('message', async (raw) => {
+      let msg: any;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ error: 'Invalid JSON message' }));
+        return;
+      }
+
+      if (!msg || typeof msg !== 'object') return;
+      const { id, action, params = {} } = msg;
+      if (!id || !action) return;
+
+      try {
+        const result = await this.handleRpcAction(action, params);
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ id, success: true, data: result }));
+      } catch (err: any) {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ id, success: false, error: err.message || 'Action failed' }));
+      }
+    });
   }
 
   /**
@@ -346,18 +349,20 @@ export class ChatWSGateway {
    */
   public broadcastStream(data: any): void {
     const raw = JSON.stringify(data);
-    this.streamWss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(raw, (err) => {
-            if (err) {
-              try { client.terminate(); } catch {}
-            }
-          });
-        } catch {
-          try { client.terminate(); } catch {}
+    for (const server of [this.streamWss, this.chatWss]) {
+      server.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(raw, (err) => {
+              if (err) {
+                try { client.terminate(); } catch {}
+              }
+            });
+          } catch {
+            try { client.terminate(); } catch {}
+          }
         }
-      }
-    });
+      });
+    }
   }
 }

@@ -150,35 +150,35 @@ function formatDurationSec(sec) {
 
 // Dynamic Network Connection Scheduler & Concurrency Pool
 class NetworkScheduler {
-  constructor(maxConcurrent = 3) {
+  constructor(maxConcurrent = 2) {
     this.maxConcurrent = maxConcurrent;
     this.running = 0;
+    this.runningImages = 0;
     this.queue = [];
   }
 
-  enqueue(fn, priority = 1) {
+  enqueue(fn, priority = 1, isImage = false) {
     return new Promise((resolve, reject) => {
-      this.queue.push({ fn, resolve, reject, priority });
+      this.queue.push({ fn, resolve, reject, priority, isImage });
       this.queue.sort((a, b) => a.priority - b.priority);
       this.dequeue();
     });
   }
 
   dequeue() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
-    const item = this.queue.shift();
-    this.running++;
-    item.fn()
-      .then(item.resolve)
-      .catch(item.reject)
-      .finally(() => {
+    while (this.running < this.maxConcurrent) {
+      // Reserve one slot for API calls even when many images are visible.
+      const index = this.queue.findIndex((item) => !item.isImage || this.runningImages < 1);
+      if (index < 0) return;
+      const item = this.queue.splice(index, 1)[0];
+      this.running++;
+      if (item.isImage) this.runningImages++;
+      Promise.resolve().then(item.fn).then(item.resolve, item.reject).finally(() => {
         this.running--;
+        if (item.isImage) this.runningImages--;
         this.dequeue();
       });
-  }
-
-  fetch(url, options = {}, priority = 1) {
-    return this.enqueue(() => fetch(url, options), priority);
+    }
   }
 
   loadImage(imgEl, src, fallbackSrc = '') {
@@ -193,11 +193,67 @@ class NetworkScheduler {
         resolve(false);
       };
       img.src = src;
-    }), 2);
+    }), 2, true);
+  }
+
+  loadVisibleImage(img, src) {
+    return this.enqueue(() => new Promise((resolve) => {
+      // Lists are frequently redrawn while requests are queued.
+      if (!img.isConnected) return resolve(false);
+      const done = () => resolve(true);
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+      img.src = src;
+    }), 2, true);
   }
 }
 
-const scheduler = new NetworkScheduler(3);
+const scheduler = new NetworkScheduler(2);
+
+// Native lazy loading still lets all visible images compete with interactive API
+// requests. Only enqueue images near the viewport, one at a time.
+function initManagedImages() {
+  const load = (img) => {
+    const src = img.dataset.networkSrc || img.dataset.networkPoster;
+    if (!src) return;
+    if (img.dataset.networkPoster) {
+      delete img.dataset.networkPoster;
+      scheduler.enqueue(() => new Promise((resolve) => {
+        if (!img.isConnected) return resolve();
+        const poster = new Image();
+        poster.onload = () => { if (img.isConnected) img.poster = src; resolve(); };
+        poster.onerror = () => resolve();
+        poster.src = src;
+      }), 2, true);
+    } else {
+      delete img.dataset.networkSrc;
+      scheduler.loadVisibleImage(img, src);
+    }
+  };
+  const intersection = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            intersection.unobserve(entry.target);
+            load(entry.target);
+          }
+        }
+      }, { rootMargin: '100px' })
+    : null;
+  const observe = (node) => {
+    if (node.nodeType !== 1) return;
+    const images = node.matches('img[data-network-src], video[data-network-poster]') ? [node] : [];
+    images.push(...node.querySelectorAll('img[data-network-src], video[data-network-poster]'));
+    for (const img of images) {
+      if (intersection) intersection.observe(img);
+      else load(img);
+    }
+  };
+  observe(document.body);
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) observe(node);
+  }).observe(document.body, { childList: true, subtree: true });
+}
 
 // Telegram / Twemoji Vector SVG Emojis (No System Fonts)
 function getEmojiHex(emoji) {
@@ -224,12 +280,14 @@ async function api(path, method = 'GET', data = null, priority = null) {
   };
   if (data) opts.body = JSON.stringify(data);
   const prio = priority !== null ? priority : (method === 'GET' ? 1 : 0);
-  const res = await scheduler.fetch(path, opts, prio);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: '网络请求异常' }));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return scheduler.enqueue(async () => {
+    const res = await fetch(path, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: '网络请求异常' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }, prio);
 }
 
 // SSE Connection
@@ -1963,7 +2021,7 @@ function renderClientDialogs() {
 
     item.innerHTML = `
       <div class="dialog-avatar-wrap" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; position: relative; overflow: visible; flex-shrink: 0; background: var(--bg-subtle);">
-        <img class="dialog-avatar-img" src="${avatarUrl}" alt="" loading="lazy" style="width: 48px; height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
+        <img class="dialog-avatar-img" data-network-src="${avatarUrl}" alt="" loading="lazy" style="width: 48px; height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
              onload="this.classList.add('loaded'); if(this.nextElementSibling) this.nextElementSibling.style.display='none';"
              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
         <div class="dialog-avatar-initials" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--color-primary); text-transform: uppercase;">${escapeHtml(initials)}</div>
@@ -2627,7 +2685,7 @@ function renderClientMessages(preserveScroll = false) {
         const fullUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
         mediaHtml = `
           <div class="msg-media-wrap photo">
-            <img class="msg-media-photo" src="${thumbUrl}" alt="Photo" loading="lazy" onclick="openLightbox('${fullUrl}', '${escapeHtml(senderName)}')">
+            <img class="msg-media-photo" data-network-src="${thumbUrl}" alt="Photo" loading="lazy" onclick="openLightbox('${fullUrl}', '${escapeHtml(senderName)}')">
           </div>
         `;
       } else if (media.type === 'video') {
@@ -2637,7 +2695,7 @@ function renderClientMessages(preserveScroll = false) {
         const titleStr = escapeHtml(senderName + ' · 视频');
         mediaHtml = `
           <div class="custom-video-card" onmouseenter="handleVideoPreviewEnter(this)" onmouseleave="handleVideoPreviewLeave(this)" onclick="openCinemaVideo('${videoUrl}', '${titleStr}', '${timeStr}', '${durStr}')" title="点击在影院播放器中播放">
-            <video preload="metadata" playsinline muted loop poster="${thumbUrl}" src="${videoUrl}"></video>
+            <video preload="none" playsinline muted loop data-network-poster="${thumbUrl}" src="${videoUrl}"></video>
             <div class="video-card-play-badge">
               <svg class="ui-icon" style="transform: translateX(1px);"><use href="#icon-play"/></svg>
             </div>
@@ -2716,7 +2774,7 @@ function renderClientMessages(preserveScroll = false) {
           const stickerUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}&thumb=1`;
           mediaHtml = `
             <div class="msg-media-wrap sticker sticker-bubble" data-set-id="${escapeHtml(setId)}" data-access-hash="${escapeHtml(accessHash)}" data-short-name="${escapeHtml(shortName)}" title="点击查看与安装此贴纸包">
-              <img class="msg-media-sticker" src="${stickerUrl}" alt="Sticker" loading="lazy">
+              <img class="msg-media-sticker" data-network-src="${stickerUrl}" alt="Sticker" loading="lazy">
             </div>
           `;
         }
@@ -2803,7 +2861,7 @@ function renderClientMessages(preserveScroll = false) {
       <div class="msg-row-inner">
         ${!isOut && senderId && meta.isLastInGroup ? `
           <div class="msg-sender-avatar-wrap" onclick="event.stopPropagation(); loadPeerProfile(${senderId})" title="${escapeHtml(senderName)} (点击查看资料)">
-            <img class="msg-sender-avatar-img" src="${avatarUrl}" alt="" loading="lazy"
+            <img class="msg-sender-avatar-img" data-network-src="${avatarUrl}" alt="" loading="lazy"
                  onload="this.classList.add('loaded'); if (this.nextElementSibling) this.nextElementSibling.style.display='none';"
                  onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
             <div class="msg-sender-avatar-initials" style="background:${avatarBg};">${escapeHtml(initials)}</div>
@@ -4009,7 +4067,7 @@ async function loadSharedMedia(type = 'photos') {
         const fullUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
         gridHtml += `
           <div class="shared-photo-item" onclick="openLightbox('${fullUrl}', '共享照片 #${m.id}')">
-            <img src="${thumbUrl}" alt="Photo" loading="lazy">
+            <img data-network-src="${thumbUrl}" alt="Photo" loading="lazy">
           </div>
         `;
       }
@@ -4025,7 +4083,7 @@ async function loadSharedMedia(type = 'photos') {
         const titleStr = escapeHtml('共享视频 #' + m.id);
         gridHtml += `
           <div class="shared-video-item" onclick="openCinemaVideo('${videoUrl}', '${titleStr}', '${timeStr}', '${durStr}')" title="点击在影院播放器中播放">
-            <video preload="metadata" playsinline poster="${thumbUrl}" src="${videoUrl}"></video>
+            <video preload="none" playsinline data-network-poster="${thumbUrl}" src="${videoUrl}"></video>
             <div class="shared-video-play-overlay">
               <div class="shared-video-play-badge">
                 <svg class="ui-icon" style="transform: translateX(1px);"><use href="#icon-play"/></svg>
@@ -6588,7 +6646,7 @@ function renderGifStream() {
 
     const thumbUrl = `/api/instances/${instId}/account/sticker-thumb?docId=${g.id}&accessHash=${g.accessHash}&fileRef=${encodeURIComponent(g.fileReference)}`;
     card.innerHTML = `
-      <img src="${thumbUrl}" alt="GIF" loading="lazy" />
+      <img data-network-src="${thumbUrl}" alt="GIF" loading="lazy" />
       <span class="gif-item-badge">GIF</span>
     `;
 
@@ -6621,14 +6679,11 @@ async function sendGif(gif) {
 }
 
 // ==========================================
-// Dual WebSocket Chat Manager (Strictly at most 2 WebSockets)
-// Connection 1: /ws/chat-stream (Server-push real-time event stream)
-// Connection 2: /ws/chat-rpc (High-speed interactive RPC & Cache queries)
+// Chat events and RPC share one WebSocket to leave connections available for media.
 // ==========================================
 class ChatWSManager {
   constructor() {
-    this.streamWs = null;
-    this.rpcWs = null;
+    this.ws = null;
     this.rpcCallbacks = new Map();
     this.rpcIdCounter = 0;
     this.reconnectTimer = null;
@@ -6637,51 +6692,54 @@ class ChatWSManager {
 
   connect() {
     this.isManualClosed = false;
-    if (this.streamWs && this.streamWs.readyState <= 1 && this.rpcWs && this.rpcWs.readyState <= 1) {
-      return; // Already connected or connecting
+    if (this.ws && this.ws.readyState <= WebSocket.OPEN) return;
+    if (this.ws) {
+      this.ws = null;
+      this.rejectPending('Connection closed');
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
 
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = location.host;
-
-    // --- 1. Real-time Stream WS (/ws/chat-stream) ---
     try {
-      this.streamWs = new WebSocket(`${proto}//${host}/ws/chat-stream`);
-      this.streamWs.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data);
-          this.handleStreamEvent(event);
-        } catch (_) {}
-      };
-      this.streamWs.onerror = () => {};
-      this.streamWs.onclose = () => {
-        if (!this.isManualClosed) this.scheduleReconnect();
-      };
-    } catch (_) {}
-
-    // --- 2. RPC Channel WS (/ws/chat-rpc) ---
-    try {
-      this.rpcWs = new WebSocket(`${proto}//${host}/ws/chat-rpc`);
-      this.rpcWs.onmessage = (e) => {
+      const ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
+      this.ws = ws;
+      ws.onmessage = (e) => {
+        if (this.ws !== ws) return;
         try {
           const msg = JSON.parse(e.data);
           if (msg.id && this.rpcCallbacks.has(msg.id)) {
             const cb = this.rpcCallbacks.get(msg.id);
             this.rpcCallbacks.delete(msg.id);
             clearTimeout(cb.timeout);
-            if (msg.success) {
-              cb.resolve(msg.data);
-            } else {
-              cb.reject(new Error(msg.error || 'RPC action failed'));
-            }
+            if (msg.success) cb.resolve(msg.data);
+            else cb.reject(new Error(msg.error || 'RPC action failed'));
+          } else if (msg.type) {
+            this.handleStreamEvent(msg);
           }
         } catch (_) {}
       };
-      this.rpcWs.onerror = () => {};
-      this.rpcWs.onclose = () => {
+      ws.onerror = () => {};
+      ws.onclose = () => {
+        if (this.ws !== ws) return;
+        this.ws = null;
+        this.rejectPending('Connection closed');
         if (!this.isManualClosed) this.scheduleReconnect();
       };
-    } catch (_) {}
+    } catch (_) {
+      this.ws = null;
+      this.scheduleReconnect();
+    }
+  }
+
+  rejectPending(message) {
+    this.rpcCallbacks.forEach((cb) => {
+      clearTimeout(cb.timeout);
+      cb.reject(new Error(message));
+    });
+    this.rpcCallbacks.clear();
   }
 
   disconnect() {
@@ -6690,23 +6748,16 @@ class ChatWSManager {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.streamWs) {
-      try { this.streamWs.close(); } catch (_) {}
-      this.streamWs = null;
+    const ws = this.ws;
+    this.ws = null;
+    if (ws) {
+      try { ws.close(); } catch (_) {}
     }
-    if (this.rpcWs) {
-      try { this.rpcWs.close(); } catch (_) {}
-      this.rpcWs = null;
-    }
-    this.rpcCallbacks.forEach((cb) => {
-      clearTimeout(cb.timeout);
-      cb.reject(new Error('Connection closed'));
-    });
-    this.rpcCallbacks.clear();
+    this.rejectPending('Connection closed');
   }
 
   isConnected() {
-    return this.rpcWs && this.rpcWs.readyState === WebSocket.OPEN;
+    return !!this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 
   scheduleReconnect() {
@@ -6719,7 +6770,8 @@ class ChatWSManager {
 
   sendRpc(action, params = {}) {
     return new Promise((resolve, reject) => {
-      if (!this.rpcWs || this.rpcWs.readyState !== WebSocket.OPEN) {
+      const ws = this.ws;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
         return reject(new Error('RPC WebSocket is not connected'));
       }
       const id = ++this.rpcIdCounter;
@@ -6731,7 +6783,13 @@ class ChatWSManager {
       }, 8000);
 
       this.rpcCallbacks.set(id, { resolve, reject, timeout });
-      this.rpcWs.send(JSON.stringify({ id, action, params }));
+      try {
+        ws.send(JSON.stringify({ id, action, params }));
+      } catch (err) {
+        clearTimeout(timeout);
+        this.rpcCallbacks.delete(id);
+        reject(err);
+      }
     });
   }
 
@@ -7837,6 +7895,7 @@ window.onload = async () => {
   if (window.SettingsPage) window.SettingsPage.init();
   if (window.ProfilePanel) window.ProfilePanel.init();
   initListeners();
+  initManagedImages();
   initSSE();
   initMessageContextMenu();
   initCacheSettings();
@@ -7845,8 +7904,6 @@ window.onload = async () => {
   initChatMuteModal();
   const btnMarkAll = document.getElementById('btn-dialogs-mark-all-read');
   if (btnMarkAll) btnMarkAll.onclick = () => markAllDialogsRead();
-  await loadStatus();
-  await loadInstances();
-  await loadPlugins();
+  await Promise.all([loadStatus(), loadInstances(), loadPlugins()]);
   setInterval(loadStatus, 5000);
 };

@@ -2,6 +2,8 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
+import * as zlib from 'zlib';
+import * as crypto from 'crypto';
 import { InstanceManager } from '../manager';
 import { SSEHub } from './sse';
 import { handleApiRoute } from './api';
@@ -19,6 +21,24 @@ const MIME_TYPES: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
+const BUNDLES: Record<string, string[]> = {
+  '/bundle.css': ['themes.css', 'style.css'],
+  '/bundle.js': ['js/theme.js', 'js/plugin-config-form.js', 'js/settings.js', 'js/profile-panel.js', 'app.js'],
+};
+
+function acceptsGzip(header: string | undefined): boolean {
+  if (!header) return false;
+  let wildcardQuality = 0;
+  for (const part of header.split(',')) {
+    const [encoding, ...parameters] = part.trim().toLowerCase().split(';');
+    const qualityParameter = parameters.find((parameter) => parameter.trim().startsWith('q='));
+    const quality = qualityParameter ? Number(qualityParameter.trim().slice(2)) : 1;
+    if (encoding.trim() === 'gzip') return Number.isFinite(quality) && quality > 0;
+    if (encoding.trim() === '*') wildcardQuality = quality;
+  }
+  return Number.isFinite(wildcardQuality) && wildcardQuality > 0;
+}
+
 export class GUIServer {
   private server?: http.Server;
   private readonly manager: InstanceManager;
@@ -27,6 +47,7 @@ export class GUIServer {
   private readonly wsGateway: ChatWSGateway;
   private readonly webDir: string;
   private readonly pluginsDir: string;
+  private readonly bundles = new Map<string, { signature: string; content: Buffer; gzip: Buffer; modified: Date }>();
   private heartbeatCleanup?: () => void;
 
   constructor(options?: { baseDir?: string; webDir?: string; pluginsDir?: string }) {
@@ -117,6 +138,12 @@ export class GUIServer {
         }
 
         const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+        if (url.pathname === '/ws/chat') {
+          this.wsGateway.chatWss.handleUpgrade(req, socket, head, (ws) => {
+            this.wsGateway.chatWss.emit('connection', ws, req);
+          });
+          return;
+        }
         if (url.pathname === '/ws/chat-stream') {
           this.wsGateway.streamWss.handleUpgrade(req, socket, head, (ws) => {
             this.wsGateway.streamWss.emit('connection', ws, req);
@@ -169,28 +196,80 @@ export class GUIServer {
     let safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
     if (safePath === '/' || safePath === '\\') safePath = 'index.html';
 
-    const filePath = path.join(this.webDir, safePath);
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      const ext = path.extname(filePath).toLowerCase();
-      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, {
-        'Content-Type': contentType,
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-      });
-      fs.createReadStream(filePath).pipe(res);
-    } else {
-      // Fallback to index.html for SPA client-side routing
-      const indexPath = path.join(this.webDir, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        fs.createReadStream(indexPath).pipe(res);
-      } else {
+    const bundleFiles = BUNDLES[pathname];
+    let bundle: { signature: string; content: Buffer; gzip: Buffer; modified: Date } | undefined;
+    if (bundleFiles) {
+      try {
+        const files = bundleFiles.map((name) => path.join(this.webDir, name));
+        const stats = files.map((file) => fs.statSync(file));
+        const signature = crypto.createHash('sha256').update(stats.map((stat) => `${stat.size}:${stat.mtimeMs}`).join('|')).digest('hex');
+        bundle = this.bundles.get(pathname);
+        if (!bundle || bundle.signature !== signature) {
+          const separator = pathname.endsWith('.js') ? '\n;\n' : '\n';
+          const prefix = pathname.endsWith('.js') ? "'use strict';\n" : '';
+          const content = Buffer.from(prefix + files.map((file) => fs.readFileSync(file, 'utf8')).join(separator));
+          bundle = { signature, content, gzip: zlib.gzipSync(content), modified: new Date(Math.max(...stats.map((stat) => stat.mtimeMs))) };
+          this.bundles.set(pathname, bundle);
+        }
+      } catch {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Web UI not found. Please ensure src/gui/web/index.html exists.');
+        res.end('Web UI bundle not found.');
+        return;
       }
     }
+
+    let filePath = path.join(this.webDir, safePath);
+    if (!bundle && (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())) {
+      // Fallback to index.html for SPA client-side routing
+      filePath = path.join(this.webDir, 'index.html');
+    }
+    if (!bundle && (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Web UI not found. Please ensure src/gui/web/index.html exists.');
+      return;
+    }
+
+    const stat = bundle ? undefined : fs.statSync(filePath);
+    const ext = path.extname(bundle ? pathname : filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    const size = bundle ? bundle.content.length : stat!.size;
+    const modified = bundle ? bundle.modified : stat!.mtime;
+    const etag = bundle ? `W/"${bundle.signature}"` : `W/"${size.toString(16)}-${Math.trunc(stat!.mtimeMs).toString(16)}"`;
+    const compressible = ['.html', '.css', '.js', '.json', '.svg'].includes(ext) && size >= 1024;
+    const headers: http.OutgoingHttpHeaders = {
+      'Content-Type': contentType,
+      // Asset URLs are not content-hashed, so validate before reusing them.
+      'Cache-Control': 'no-cache',
+      'ETag': etag,
+      'Last-Modified': modified.toUTCString(),
+    };
+    if (compressible) headers.Vary = 'Accept-Encoding';
+
+    const ifNoneMatch = req.headers['if-none-match'];
+    if ((req.method === 'GET' || req.method === 'HEAD') && ifNoneMatch &&
+        ifNoneMatch.split(',').some((tag) => tag.trim() === etag || tag.trim() === '*')) {
+      res.writeHead(304, headers);
+      res.end();
+      return;
+    }
+
+    const useGzip = compressible && acceptsGzip(req.headers['accept-encoding']);
+    if (useGzip) headers['Content-Encoding'] = 'gzip';
+    if (bundle) headers['Content-Length'] = useGzip ? bundle.gzip.length : bundle.content.length;
+    else if (!useGzip) headers['Content-Length'] = size;
+    res.writeHead(200, headers);
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
+    if (bundle) {
+      res.end(useGzip ? bundle.gzip : bundle.content);
+      return;
+    }
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', () => res.destroy());
+    if (useGzip) stream.pipe(zlib.createGzip()).pipe(res);
+    else stream.pipe(res);
   }
 
   async stop(): Promise<void> {
