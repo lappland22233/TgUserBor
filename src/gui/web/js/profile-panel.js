@@ -50,7 +50,7 @@
           </button>
         </div>
         <div class="profile-pane-avatar">
-          <img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.style.display='none'">
+          <img data-network-src="${escapeHtml(avatarUrl)}" alt="" onerror="this.style.display='none'">
         </div>
         <div class="profile-pane-name">${escapeHtml(p.firstName || p.title || '未知')}</div>
         <div class="profile-pane-username">${p.username ? '@' + escapeHtml(p.username) : ''}</div>
@@ -87,7 +87,7 @@
 
       grid.innerHTML = media.map((m) => {
         const url = `/api/instances/${encodeURIComponent(instId)}/account/media?chatId=${encodeURIComponent(chatId)}&messageId=${encodeURIComponent(m.id)}&thumb=1`;
-        return `<div class="profile-media-item"><img src="${escapeHtml(url)}" loading="lazy" alt=""></div>`;
+        return `<div class="profile-media-item"><img data-network-src="${escapeHtml(url)}" loading="lazy" alt=""></div>`;
       }).join('');
     } catch (_) {
       const grid = document.getElementById('profile-media-grid');

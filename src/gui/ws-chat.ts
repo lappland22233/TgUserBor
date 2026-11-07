@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import type { IncomingMessage } from 'http';
 import type { InstanceManager } from '../manager';
 import { CacheManager } from './cache-manager';
 import type { GUIAuth } from './auth';
@@ -16,6 +15,7 @@ function validSavedTagReaction(value: any): boolean {
 export class ChatWSGateway {
   public readonly streamWss: WebSocketServer;
   public readonly rpcWss: WebSocketServer;
+  public readonly chatWss: WebSocketServer;
   private readonly manager: InstanceManager;
   private readonly cache: CacheManager;
   private readonly auth?: GUIAuth;
@@ -28,6 +28,7 @@ export class ChatWSGateway {
     // noServer: true lets HTTP server route 'upgrade' events to the appropriate WSS
     this.streamWss = new WebSocketServer({ noServer: true });
     this.rpcWss = new WebSocketServer({ noServer: true });
+    this.chatWss = new WebSocketServer({ noServer: true });
 
     this.initStreamChannel();
     this.initRpcChannel();
@@ -39,7 +40,7 @@ export class ChatWSGateway {
    * 仅向下单向广播高频实时消息、打字中、撤回与更新事件
    */
   private initStreamChannel(): void {
-    this.streamWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const onConnection = (ws: WebSocket) => {
       (ws as any).isAlive = true;
       ws.on('pong', () => {
         (ws as any).isAlive = true;
@@ -47,15 +48,19 @@ export class ChatWSGateway {
 
       // 发送当前初始心跳
       ws.send(JSON.stringify({ type: 'connected', channel: 'chat-stream', timestamp: Date.now() }));
-    });
+    };
+    this.streamWss.on('connection', onConnection);
+    this.chatWss.on('connection', onConnection);
 
     // 15 秒心跳保活检测
     const heartbeat = setInterval(() => {
-      this.streamWss.clients.forEach((ws: WebSocket) => {
-        if (!(ws as any).isAlive) return ws.terminate();
-        (ws as any).isAlive = false;
-        ws.ping();
-      });
+      for (const server of [this.streamWss, this.chatWss]) {
+        server.clients.forEach((ws: WebSocket) => {
+          if (!(ws as any).isAlive) return ws.terminate();
+          (ws as any).isAlive = false;
+          ws.ping();
+        });
+      }
     }, 15000);
     heartbeat.unref();
   }
@@ -64,11 +69,11 @@ export class ChatWSGateway {
    * 通道 2: 双向交互与历史拉取 RPC 通道 (/ws/chat-rpc)
    */
   private initRpcChannel(): void {
-    this.rpcWss.on('connection', (ws: WebSocket) => {
-      (ws as any).isAlive = true;
-      ws.on('pong', () => {
+    const onConnection = (ws: WebSocket) => {
+      if (typeof (ws as any).isAlive !== 'boolean') {
         (ws as any).isAlive = true;
-      });
+        ws.on('pong', () => { (ws as any).isAlive = true; });
+      }
 
       ws.on('message', async (raw: string) => {
         let msg: any;
@@ -88,7 +93,9 @@ export class ChatWSGateway {
           ws.send(JSON.stringify({ id, success: false, error: err.message || 'Action failed' }));
         }
       });
-    });
+    };
+    this.rpcWss.on('connection', onConnection);
+    this.chatWss.on('connection', onConnection);
 
     const heartbeat = setInterval(() => {
       this.rpcWss.clients.forEach((ws: WebSocket) => {
@@ -523,7 +530,7 @@ export class ChatWSGateway {
    */
   public broadcastStream(data: any): void {
     const raw = JSON.stringify(data);
-    this.streamWss.clients.forEach((client) => {
+    for (const server of [this.streamWss, this.chatWss]) server.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         try {
           client.send(raw, (err) => {

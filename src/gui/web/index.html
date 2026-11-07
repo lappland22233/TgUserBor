@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TGuserBOT 控制台</title>
   <script>document.documentElement.dataset.theme=localStorage.getItem('tgbot_ui_theme')||'dark';if(document.documentElement.dataset.theme==='system'){document.documentElement.dataset.theme=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}</script>
-  <link rel="stylesheet" href="themes.css?v=2">
-  <link rel="stylesheet" href="style.css?v=100">
+  <link rel="stylesheet" href="bundle.css">
 </head>
 <body>
   <!-- SVG Symbols Sprite (Professional Vector Icons, Zero Emojis) -->
@@ -2970,22 +2969,7 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="js/theme.js"></script>
-  <script src="js/plugin-config-form.js"></script>
-  <script src="js/settings.js?v=39"></script>
-  <script src="js/profile-panel.js"></script>
-  <script src="js/dialog-folders.js?v=6"></script>
-  <script src="js/chat-notifications.js"></script>
-  <script src="js/cloud-drafts.js"></script>
-  <script src="js/visual-viewport.js"></script>
-  <script src="js/mini-app.js?v=20"></script>
-  <script src="js/bot-keyboard.js?v=14"></script>
-  <script src="js/chat-ws.js?v=7"></script>
-  <script src="js/comments.js?v=1"></script>
-  <script src="js/pinned-messages.js?v=1"></script>
-  <script src="js/forum-topics.js?v=14"></script>
-  <script src="app.js?v=140"></script>
-  <script src="js/global-message-search.js?v=2"></script>
+  <script src="bundle.js"></script>
   <script>
     if ('serviceWorker' in navigator) window.addEventListener('load', () => {
       navigator.serviceWorker.register('./service-worker.js', { scope: './' }).catch(() => {});

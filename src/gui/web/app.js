@@ -163,64 +163,299 @@ function formatDurationSec(sec) {
 
 // Dynamic Network Connection Scheduler & Concurrency Pool
 class NetworkScheduler {
-  constructor(maxConcurrent = 3) {
+  constructor(maxConcurrent = 3, maxImages = maxConcurrent) {
     this.maxConcurrent = maxConcurrent;
+    this.maxImages = maxImages;
     this.running = 0;
+    this.runningImages = 0;
     this.queue = [];
     this.imageRequests = new WeakMap();
+    this.imageObjectUrls = new WeakMap();
+    this.visibleRequests = new WeakMap();
   }
 
-  enqueue(fn, priority = 1) {
+  enqueue(fn, priority = 1, isImage = false) {
     return new Promise((resolve, reject) => {
-      this.queue.push({ fn, resolve, reject, priority });
+      this.queue.push({ fn, resolve, reject, priority, isImage });
       this.queue.sort((a, b) => a.priority - b.priority);
       this.dequeue();
     });
   }
 
   dequeue() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
-    const item = this.queue.shift();
-    this.running++;
-    item.fn()
-      .then(item.resolve)
-      .catch(item.reject)
-      .finally(() => {
+    while (this.running < this.maxConcurrent) {
+      const index = this.queue.findIndex(item => !item.isImage || this.runningImages < this.maxImages);
+      if (index < 0) return;
+      const item = this.queue.splice(index, 1)[0];
+      this.running++;
+      if (item.isImage) this.runningImages++;
+      let result;
+      try { result = item.fn(); } catch (error) { result = Promise.reject(error); }
+      Promise.resolve(result).then(item.resolve, item.reject).finally(() => {
         this.running--;
+        if (item.isImage) this.runningImages--;
         this.dequeue();
       });
-  }
-
-  fetch(url, options = {}, priority = 1) {
-    return this.enqueue(() => fetch(url, options), priority);
+    }
   }
 
   loadImage(imgEl, src, fallbackSrc = '') {
-    const request = {};
-    if (imgEl) this.imageRequests.set(imgEl, request);
+    const request = { controller: new AbortController() };
+    if (imgEl) {
+      this.imageRequests.get(imgEl)?.controller.abort();
+      this.imageRequests.set(imgEl, request);
+    }
+    const current = () => !request.controller.signal.aborted &&
+      (!imgEl || this.imageRequests.get(imgEl) === request);
+    const fail = () => {
+      if (current() && imgEl && fallbackSrc) {
+        imgEl.src = fallbackSrc;
+        const previous = this.imageObjectUrls.get(imgEl);
+        if (previous) URL.revokeObjectURL(previous);
+        this.imageObjectUrls.delete(imgEl);
+      }
+      return false;
+    };
+    return this.enqueue(async () => {
+      let objectUrl = '';
+      let transferred = false;
+      try {
+        if (!current()) return false;
+        // Media responses are deliberately no-store. Fetch once and decode the
+        // resulting blob so assigning the image never downloads it a second time.
+        const response = await fetch(src, { signal: request.controller.signal });
+        if (!response.ok) return fail();
+        const blob = await response.blob();
+        if (!current()) return false;
+        objectUrl = URL.createObjectURL(blob);
+        const loaded = await new Promise(resolve => {
+          const img = new Image();
+          const done = ok => {
+            img.onload = null;
+            img.onerror = null;
+            request.controller.signal.removeEventListener('abort', aborted);
+            resolve(ok);
+          };
+          const aborted = () => { img.src = ''; done(false); };
+          img.onload = () => done(true);
+          img.onerror = () => done(false);
+          request.controller.signal.addEventListener('abort', aborted, { once: true });
+          if (!current()) return aborted();
+          img.src = objectUrl;
+        });
+        if (!loaded) return fail();
+        if (!current()) return false;
+        if (imgEl) {
+          const previous = this.imageObjectUrls.get(imgEl);
+          imgEl.src = objectUrl;
+          this.imageObjectUrls.set(imgEl, objectUrl);
+          transferred = true;
+          if (previous) URL.revokeObjectURL(previous);
+        }
+        return true;
+      } catch (_) {
+        return fail();
+      } finally {
+        if (objectUrl && !transferred) URL.revokeObjectURL(objectUrl);
+        if (imgEl && this.imageRequests.get(imgEl) === request) this.imageRequests.delete(imgEl);
+      }
+    }, 2, true);
+  }
+
+  loadVisibleImage(img, src, shouldStart = () => true, onSkip = () => {}) {
     return this.enqueue(() => new Promise((resolve) => {
-      if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-      const img = new Image();
-      img.onload = () => {
-        if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-        if (imgEl) imgEl.src = src;
-        resolve(true);
+      if (!img.isConnected) return resolve(false);
+      if (!shouldStart()) { onSkip(); return resolve(false); }
+      const done = (success) => {
+        img.removeEventListener('load', onLoad);
+        img.removeEventListener('error', onError);
+        this.visibleRequests.delete(img);
+        resolve(success);
       };
-      img.onerror = () => {
-        if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-        if (imgEl && fallbackSrc) imgEl.src = fallbackSrc;
-        resolve(false);
-      };
+      const onLoad = () => done(true);
+      const onError = () => done(false);
+      this.visibleRequests.set(img, () => { img.removeAttribute('src'); done(false); });
+      img.addEventListener('load', onLoad);
+      img.addEventListener('error', onError);
+      // Visibility was already checked before entering the queue. Native lazy
+      // loading can otherwise stall this slot if the image scrolls away.
+      img.loading = 'eager';
       img.src = src;
-    }), 2);
+    }), 2, true);
+  }
+
+  loadVisiblePoster(video, src) {
+    return this.enqueue(async () => {
+      if (!video.isConnected) return;
+      const controller = new AbortController();
+      let objectUrl = '';
+      this.visibleRequests.set(video, () => {
+        controller.abort();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        this.visibleRequests.delete(video);
+      });
+      try {
+        const response = await fetch(src, { signal: controller.signal });
+        if (!response.ok) return;
+        const blob = await response.blob();
+        if (!video.isConnected || controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        video.poster = objectUrl;
+      } catch (_) {
+        // A removed card or failed thumbnail must not block the image queue.
+      } finally {
+        if (!objectUrl) this.visibleRequests.delete(video);
+      }
+    }, 2, true);
+  }
+
+  cancelVisibleImage(img) {
+    this.visibleRequests.get(img)?.();
   }
 
   cancelImage(imgEl) {
-    if (imgEl) this.imageRequests.delete(imgEl);
+    if (!imgEl) return;
+    this.imageRequests.get(imgEl)?.controller.abort();
+    this.imageRequests.delete(imgEl);
+    const objectUrl = this.imageObjectUrls.get(imgEl);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    this.imageObjectUrls.delete(imgEl);
   }
 }
 
-const scheduler = new NetworkScheduler(3);
+// Keep capacity for interactive requests when many media items are visible.
+const scheduler = new NetworkScheduler(2, 1);
+
+function initManagedImages() {
+  const selector = 'img[data-network-src], video[data-network-poster]';
+  const stickerVisibility = new WeakMap();
+  const pendingStickers = new WeakSet();
+  const load = img => {
+    const src = img.dataset.networkSrc || img.dataset.networkPoster;
+    if (!src) return;
+    if (img.dataset.networkPoster) {
+      delete img.dataset.networkPoster;
+      void scheduler.loadVisiblePoster(img, src);
+    } else {
+      delete img.dataset.networkSrc;
+      if (intersection && img.dataset.networkSticker === '1') {
+        pendingStickers.add(img);
+        void scheduler.loadVisibleImage(img, src,
+          () => stickerVisibility.get(img) === true && img.getClientRects().length > 0,
+          () => { img.dataset.networkSrc = src; }
+        ).finally(() => {
+          pendingStickers.delete(img);
+          if (!img.dataset.networkSrc) intersection.unobserve(img);
+        });
+      } else {
+        void scheduler.loadVisibleImage(img, src);
+      }
+    }
+  };
+  const intersection = 'IntersectionObserver' in window
+    ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          const img = entry.target;
+          if (img.dataset.networkSticker === '1') {
+            stickerVisibility.set(img, entry.isIntersecting);
+            if (entry.isIntersecting && !pendingStickers.has(img)) load(img);
+          } else if (entry.isIntersecting) {
+            intersection.unobserve(img);
+            load(img);
+          }
+        }
+      }, { rootMargin: '100px' })
+    : null;
+  const visit = (node, callback) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches(selector)) callback(node);
+    node.querySelectorAll(selector).forEach(callback);
+  };
+  const observe = img => intersection ? intersection.observe(img) : load(img);
+  visit(document.body, observe);
+  new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) visit(node, observe);
+      for (const node of record.removedNodes) {
+        if (node.nodeType !== 1 || node.isConnected) continue;
+        // Loaded images no longer have data-network-src, so include all images
+        // when cancelling a list that was removed while loading.
+        const images = node.matches('img, video') ? [node] : [];
+        images.push(...node.querySelectorAll('img, video'));
+        for (const img of images) {
+          if (intersection) intersection.unobserve(img);
+          scheduler.cancelVisibleImage(img);
+          scheduler.cancelImage(img);
+        }
+      }
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
+
+// Autoplay media can otherwise start dozens of parallel range requests as the
+// message list is built. Play one visible item at a time; a tap selects another.
+function initManagedAutoplay() {
+  const selector = 'video[data-network-autoplay]';
+  const visible = new Set();
+  let active = null;
+  const stop = video => {
+    if (!video) return;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  };
+  const activate = video => {
+    if (active === video || !video?.isConnected) return;
+    stop(active);
+    active = video;
+    video.src = video.dataset.networkAutoplay;
+    video.play().catch(() => {});
+  };
+  const next = () => {
+    if (active) return;
+    for (const video of visible) {
+      if (video.isConnected) { activate(video); return; }
+    }
+  };
+  const intersection = 'IntersectionObserver' in window
+    ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else {
+            visible.delete(entry.target);
+            if (active === entry.target) { stop(active); active = null; }
+          }
+        }
+        next();
+      })
+    : null;
+  const visit = (node, callback) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches(selector)) callback(node);
+    node.querySelectorAll(selector).forEach(callback);
+  };
+  const observe = video => {
+    video.addEventListener('pointerdown', () => { if (visible.has(video)) activate(video); });
+    if (intersection) intersection.observe(video);
+    else { visible.add(video); next(); }
+  };
+  visit(document.body, observe);
+  new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) visit(node, observe);
+      for (const node of record.removedNodes) {
+        if (node.isConnected) continue;
+        visit(node, video => {
+          if (intersection) intersection.unobserve(video);
+          visible.delete(video);
+          if (active === video) { stop(active); active = null; }
+        });
+      }
+    }
+    next();
+  }).observe(document.body, { childList: true, subtree: true });
+}
 
 // Telegram / Twemoji Vector SVG Emojis (No System Fonts)
 function getEmojiHex(emoji) {
@@ -247,12 +482,14 @@ async function api(path, method = 'GET', data = null, priority = null) {
   };
   if (data) opts.body = JSON.stringify(data);
   const prio = priority !== null ? priority : (method === 'GET' ? 1 : 0);
-  const res = await scheduler.fetch(path, opts, prio);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: '网络请求异常' }));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return scheduler.enqueue(async () => {
+    const res = await fetch(path, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: '网络请求异常' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }, prio);
 }
 
 // SSE Connection
@@ -978,7 +1215,7 @@ function formatMessageContent(text, entities) {
       const instanceId = typeof state !== 'undefined' ? String(state.clientSelectedInstance || '') : '';
       if (/^\d{1,20}$/.test(documentId) && !/^0+$/.test(documentId) && instanceId) {
         const src = `/api/instances/${encodeURIComponent(instanceId)}/account/custom-emoji?documentId=${encodeURIComponent(documentId)}`;
-        return `<img class="tg-custom-emoji" src="${escapeHtml(src)}" alt="${escaped}" title="${escaped}" loading="lazy" decoding="async">`;
+        return `<img class="tg-custom-emoji" data-network-src="${escapeHtml(src)}" alt="${escaped}" title="${escaped}" loading="lazy" decoding="async">`;
       }
       return escaped;
     }
@@ -2649,7 +2886,7 @@ function renderClientDialogs() {
 
     item.innerHTML = `
       <div class="dialog-avatar-wrap" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; position: relative; overflow: visible; flex-shrink: 0; background: var(--bg-subtle);">
-        <img class="dialog-avatar-img" src="${escapeHtml(avatarUrl)}" alt="" loading="lazy" style="width: 48px; height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
+        <img class="dialog-avatar-img" data-network-src="${escapeHtml(avatarUrl)}" alt="" loading="lazy" style="width: 48px; height: 48px; max-width: 48px; max-height: 48px; border-radius: 50%; object-fit: cover; position: absolute; top: 0; left: 0;"
              onload="this.classList.add('loaded'); if(this.nextElementSibling) this.nextElementSibling.style.display='none';"
              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
         <div class="dialog-avatar-initials" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--color-primary); text-transform: uppercase;">${escapeHtml(initials)}</div>
@@ -3997,9 +4234,10 @@ function isOutgoingMessageRead(message, chatId) {
 function renderAnimationMedia(media, url) {
   const safeUrl = escapeHtml(url);
   if (String(media.mimeType || '').toLowerCase() === 'image/gif') {
-    return `<div class="msg-media-wrap video"><img class="msg-media-animation" src="${safeUrl}" alt="动图" loading="lazy"></div>`;
+    return `<div class="msg-media-wrap video"><img class="msg-media-animation" data-network-src="${safeUrl}" alt="动图" loading="lazy"></div>`;
   }
-  return `<div class="msg-media-wrap video"><video class="msg-media-animation" src="${safeUrl}" autoplay loop muted playsinline controls aria-label="动图">当前浏览器不支持播放此动图</video></div>`;
+  const posterUrl = `${url}${url.includes('?') ? '&' : '?'}thumb=1`;
+  return `<div class="msg-media-wrap video"><video class="msg-media-animation" data-network-autoplay="${safeUrl}" data-network-poster="${escapeHtml(posterUrl)}" loop muted playsinline controls aria-label="动图">当前浏览器不支持播放此动图</video></div>`;
 }
 
 function renderTelegramVideoMedia(media, instId, chatId, messageId, senderName, timeStr) {
@@ -4007,10 +4245,10 @@ function renderTelegramVideoMedia(media, instId, chatId, messageId, senderName, 
   const thumbUrl = `${videoUrl}&thumb=1`;
   const duration = media.duration ? formatDurationSec(media.duration) : '';
   if (media.roundVideo === true) {
-    return `<div class="video-note-card"><video class="video-note-player" controls playsinline preload="metadata" poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}" aria-label="${escapeHtml(senderName)} · 视频消息"></video>${duration ? `<span class="video-note-duration">${escapeHtml(duration)}</span>` : ''}</div>`;
+    return `<div class="video-note-card"><video class="video-note-player" controls playsinline preload="none" data-network-poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}" aria-label="${escapeHtml(senderName)} · 视频消息"></video>${duration ? `<span class="video-note-duration">${escapeHtml(duration)}</span>` : ''}</div>`;
   }
   const title = `${senderName} · 视频`;
-  return `<div class="custom-video-card" onmouseenter="handleVideoPreviewEnter(this)" onmouseleave="handleVideoPreviewLeave(this)" onclick="openCinemaVideo(${inlineJsArg(videoUrl)}, ${inlineJsArg(title)}, ${inlineJsArg(timeStr)}, ${inlineJsArg(duration)})" title="点击在影院播放器中播放"><video preload="metadata" playsinline muted loop poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}"></video><div class="video-card-play-badge"><svg class="ui-icon" style="transform: translateX(1px);"><use href="#icon-play"/></svg></div>${duration ? `<div class="video-card-dur-badge">${escapeHtml(duration)}</div>` : ''}<div class="video-card-expand-btn" title="影院全屏模式"><svg class="ui-icon-xs"><use href="#icon-fullscreen"/></svg></div></div>`;
+  return `<div class="custom-video-card" onmouseenter="handleVideoPreviewEnter(this)" onmouseleave="handleVideoPreviewLeave(this)" onclick="openCinemaVideo(${inlineJsArg(videoUrl)}, ${inlineJsArg(title)}, ${inlineJsArg(timeStr)}, ${inlineJsArg(duration)})" title="点击在影院播放器中播放"><video preload="none" playsinline muted loop data-network-poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}"></video><div class="video-card-play-badge"><svg class="ui-icon" style="transform: translateX(1px);"><use href="#icon-play"/></svg></div>${duration ? `<div class="video-card-dur-badge">${escapeHtml(duration)}</div>` : ''}<div class="video-card-expand-btn" title="影院全屏模式"><svg class="ui-icon-xs"><use href="#icon-fullscreen"/></svg></div></div>`;
 }
 
 function renderSharedMessageMedia(media) {
@@ -4066,7 +4304,7 @@ function renderTodoChecklist(media, message, chatId) {
     const ariaTitle = escapeHtml(titleText);
     const completerId = Number(completion?.completedBy);
     const completerAvatar = Number.isSafeInteger(completerId) && completerId > 0 && typeof state !== 'undefined' && state.clientSelectedInstance
-      ? `<img class="todo-task-completer-avatar" src="/api/instances/${encodeURIComponent(state.clientSelectedInstance)}/account/avatar?chatId=${completerId}" alt="" loading="lazy" onerror="this.remove()">` : '';
+      ? `<img class="todo-task-completer-avatar" data-network-src="/api/instances/${encodeURIComponent(state.clientSelectedInstance)}/account/avatar?chatId=${completerId}" alt="" loading="lazy" onerror="this.remove()">` : '';
     const doneBy = completion?.completedBy ? `<span class="todo-task-completed-by" title="由 Telegram 用户 ${escapeHtml(completion.completedBy)} 完成">${completerAvatar}Telegram 用户 ${escapeHtml(completion.completedBy)}</span>` : '';
     return `<button type="button" class="todo-task${complete ? ' completed' : ''}" role="checkbox" aria-checked="${complete}" aria-label="${escapeHtml(complete ? '取消完成：' : '标记完成：')}${ariaTitle}" ${readOnly ? 'disabled' : ''} onclick="event.stopPropagation(); toggleTelegramTodoTask(${inlineJsArg(chatId)}, ${inlineJsArg(message.id)}, ${id}, ${!complete})"><span class="todo-task-check" aria-hidden="true">${complete ? '✓' : ''}</span><span class="todo-task-title">${title}</span>${doneBy}</button>`;
   }).join('');
@@ -4084,10 +4322,10 @@ function renderPaidMediaItems(media, instId, chatId, messageId, senderName) {
     const params = new URLSearchParams({ chatId: String(chatId), messageId: String(messageId), mediaIndex: String(index) });
     const url = `/api/instances/${encodeURIComponent(instId)}/account/media?${params}`;
     const thumbUrl = `${url}&thumb=1`;
-    if (item.type === 'photo') return `<div class="msg-media-wrap photo"><img class="msg-media-photo" src="${escapeHtml(thumbUrl)}" alt="付费照片 ${index + 1}" loading="lazy" onclick="openLightbox(${inlineJsArg(url)}, ${inlineJsArg(senderName)})"></div>`;
-    if (item.type === 'video') return `<video class="paid-media-video" controls preload="metadata" playsinline poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(url)}" aria-label="付费视频 ${index + 1}"></video>`;
+    if (item.type === 'photo') return `<div class="msg-media-wrap photo"><img class="msg-media-photo" data-network-src="${escapeHtml(thumbUrl)}" alt="付费照片 ${index + 1}" loading="lazy" onclick="openLightbox(${inlineJsArg(url)}, ${inlineJsArg(senderName)})"></div>`;
+    if (item.type === 'video') return `<video class="paid-media-video" controls preload="none" playsinline data-network-poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(url)}" aria-label="付费视频 ${index + 1}"></video>`;
     if (item.type === 'animation') return renderAnimationMedia(item, url);
-    if (item.type === 'audio' || item.type === 'voice') return `<audio class="paid-media-audio" controls preload="metadata" src="${escapeHtml(url)}"></audio>`;
+    if (item.type === 'audio' || item.type === 'voice') return `<audio class="paid-media-audio" controls preload="none" src="${escapeHtml(url)}"></audio>`;
     const filename = item.fileName || `付费媒体 ${index + 1}`;
     return `<a class="btn btn-secondary btn-sm paid-media-file" href="${escapeHtml(url)}&download=1" download="${escapeHtml(filename)}">下载 ${escapeHtml(filename)}</a>`;
   }).join('');
@@ -4540,7 +4778,7 @@ function renderClientMessages(preserveScroll = false) {
         const fullUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
         mediaHtml = `
           <div class="msg-media-wrap photo">
-            <img class="msg-media-photo" src="${escapeHtml(thumbUrl)}" alt="Photo" loading="lazy" onclick="openLightbox(${inlineJsArg(fullUrl)}, ${inlineJsArg(senderName)})">
+            <img class="msg-media-photo" data-network-src="${escapeHtml(thumbUrl)}" alt="Photo" loading="lazy" onclick="openLightbox(${inlineJsArg(fullUrl)}, ${inlineJsArg(senderName)})">
           </div>
         `;
       } else if (media.type === 'video') {
@@ -4623,14 +4861,14 @@ function renderClientMessages(preserveScroll = false) {
           const videoUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
           mediaHtml = `
             <div class="msg-media-wrap sticker sticker-bubble" data-set-id="${escapeHtml(setId)}" data-access-hash="${escapeHtml(accessHash)}" data-short-name="${escapeHtml(shortName)}" title="点击查看与安装此贴纸包">
-              <video class="msg-media-sticker video-sticker" src="${escapeHtml(videoUrl)}" autoplay loop muted playsinline disablePictureInPicture></video>
+              <video class="msg-media-sticker video-sticker" data-network-autoplay="${escapeHtml(videoUrl)}" data-network-poster="${escapeHtml(videoUrl + '&thumb=1')}" loop muted playsinline disablePictureInPicture></video>
             </div>
           `;
         } else {
           const stickerUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}&thumb=1`;
           mediaHtml = `
             <div class="msg-media-wrap sticker sticker-bubble" data-set-id="${escapeHtml(setId)}" data-access-hash="${escapeHtml(accessHash)}" data-short-name="${escapeHtml(shortName)}" title="点击查看与安装此贴纸包">
-              <img class="msg-media-sticker" src="${escapeHtml(stickerUrl)}" alt="Sticker" loading="lazy">
+              <img class="msg-media-sticker" data-network-src="${escapeHtml(stickerUrl)}" alt="Sticker" loading="lazy">
             </div>
           `;
         }
@@ -4686,7 +4924,7 @@ function renderClientMessages(preserveScroll = false) {
         const customEmojiId = /^[1-9]\d{0,19}$/.test(String(r.customEmojiId || '')) ? String(r.customEmojiId) : '';
         const reaction = customEmojiId ? `custom:${customEmojiId}` : emoji;
         const icon = customEmojiId
-          ? `<img class="reaction-custom-emoji" src="/api/instances/${encodeURIComponent(instId)}/account/custom-emoji?documentId=${encodeURIComponent(customEmojiId)}" alt="${escapeHtml(emoji)}" loading="lazy">`
+          ? `<img class="reaction-custom-emoji" data-network-src="/api/instances/${encodeURIComponent(instId)}/account/custom-emoji?documentId=${encodeURIComponent(customEmojiId)}" alt="${escapeHtml(emoji)}" loading="lazy">`
           : escapeHtml(emoji);
         return `<span class="reaction-badge ${chosenClass}"><button type="button" class="reaction-toggle" title="回应 ${escapeHtml(emoji)}" onclick="event.stopPropagation(); quickToggleReaction(${inlineJsArg(m.id)}, ${inlineJsArg(reaction)})"><span class="reaction-emoji">${icon}</span></button><button type="button" class="reaction-count" title="查看谁回应了 ${escapeHtml(emoji)}" onclick="event.stopPropagation(); showMessageReactionUsers(${inlineJsArg(chatId)}, ${inlineJsArg(m.id)}, ${inlineJsArg(reaction)})">${escapeHtml(r.count)}</button></span>`;
       }).join('');
@@ -4743,7 +4981,7 @@ function renderClientMessages(preserveScroll = false) {
       <div class="msg-row-inner">
         ${!isOut && senderId && meta.isLastInGroup ? `
           <div class="msg-sender-avatar-wrap" onclick="event.stopPropagation(); loadPeerProfile(${inlineJsArg(senderId)})" title="${escapeHtml(senderName)} (点击查看资料)">
-            <img class="msg-sender-avatar-img" src="${escapeHtml(avatarUrl)}" alt="" loading="lazy"
+            <img class="msg-sender-avatar-img" data-network-src="${escapeHtml(avatarUrl)}" alt="" loading="lazy"
                  onload="this.classList.add('loaded'); if (this.nextElementSibling) this.nextElementSibling.style.display='none';"
                  onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
             <div class="msg-sender-avatar-initials" style="background:${avatarBg};">${escapeHtml(initials)}</div>
@@ -8416,7 +8654,7 @@ async function loadSharedMedia(type = 'photos') {
         const fullUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
         gridHtml += `
           <div class="shared-photo-item" onclick="openLightbox(${inlineJsArg(fullUrl)}, ${inlineJsArg('共享照片 #' + m.id)})">
-            <img src="${escapeHtml(thumbUrl)}" alt="Photo" loading="lazy">
+            <img data-network-src="${escapeHtml(thumbUrl)}" alt="Photo" loading="lazy">
           </div>
         `;
       }
@@ -8432,7 +8670,7 @@ async function loadSharedMedia(type = 'photos') {
         const titleStr = '共享视频 #' + m.id;
         gridHtml += `
           <div class="shared-video-item" onclick="openCinemaVideo(${inlineJsArg(videoUrl)}, ${inlineJsArg(titleStr)}, ${inlineJsArg(timeStr)}, ${inlineJsArg(durStr)})" title="点击在影院播放器中播放">
-            <video preload="metadata" playsinline poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}"></video>
+            <video preload="none" playsinline data-network-poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(videoUrl)}"></video>
             <div class="shared-video-play-overlay">
               <div class="shared-video-play-badge">
                 <svg class="ui-icon" style="transform: translateX(1px);"><use href="#icon-play"/></svg>
@@ -12859,7 +13097,8 @@ function createStickerTile(sticker, instId, favorites) {
   if (sticker.thumbDataUri) image.src = sticker.thumbDataUri;
   else {
     const thumbUrl = `/api/instances/${encodeURIComponent(instId)}/account/sticker-thumb?docId=${encodeURIComponent(sticker.id)}&accessHash=${encodeURIComponent(sticker.accessHash || '')}&fileRef=${encodeURIComponent(sticker.fileReference || '')}`;
-    scheduler.loadImage(image, thumbUrl);
+    image.dataset.networkSrc = thumbUrl;
+    image.dataset.networkSticker = '1';
   }
   button.appendChild(image);
   button.onclick = () => sendSticker(sticker);
@@ -12930,7 +13169,8 @@ async function searchTelegramStickers(offset = 0, append = false) {
       if (sticker.thumbDataUri) image.src = sticker.thumbDataUri;
       else {
         const thumbUrl = `/api/instances/${encodeURIComponent(instId)}/account/sticker-thumb?docId=${encodeURIComponent(sticker.id)}&accessHash=${encodeURIComponent(sticker.accessHash)}&fileRef=${encodeURIComponent(sticker.fileReference || '')}`;
-        scheduler.loadImage(image, thumbUrl);
+        image.dataset.networkSrc = thumbUrl;
+        image.dataset.networkSticker = '1';
       }
       button.appendChild(image);
       button.onclick = () => sendSticker(sticker);
@@ -13049,7 +13289,8 @@ function renderStickerStream() {
         const img = document.createElement('img');
         img.className = 'pack-switcher-img';
         img.alt = 'pack';
-        scheduler.loadImage(img, thumbUrl);
+        img.dataset.networkSrc = thumbUrl;
+        img.dataset.networkSticker = '1';
         switchItem.appendChild(img);
       }
     } else {
@@ -13291,7 +13532,8 @@ async function openStickerPackModal(setId, accessHash, shortName) {
           img.src = s.thumbDataUri;
         } else {
           const thumbUrl = `/api/instances/${instId}/account/sticker-thumb?docId=${s.id}&accessHash=${s.accessHash}&fileRef=${encodeURIComponent(s.fileReference || '')}`;
-          scheduler.loadImage(img, thumbUrl);
+          img.dataset.networkSrc = thumbUrl;
+          img.dataset.networkSticker = '1';
         }
         item.appendChild(img);
 
@@ -13548,7 +13790,7 @@ function renderGifStream() {
 
     const thumbUrl = `/api/instances/${instId}/account/sticker-thumb?docId=${g.id}&accessHash=${g.accessHash}&fileRef=${encodeURIComponent(g.fileReference)}`;
     const img = document.createElement('img');
-    img.src = thumbUrl;
+    img.dataset.networkSrc = thumbUrl;
     img.alt = 'GIF';
     img.loading = 'lazy';
     const badge = document.createElement('span');
@@ -16452,6 +16694,8 @@ window.onload = async () => {
   if (window.SettingsPage) window.SettingsPage.init();
   if (window.ProfilePanel) window.ProfilePanel.init();
   initListeners();
+  initManagedImages();
+  initManagedAutoplay();
   initSSE();
   initSavedMessageTags();
   initChatTranslationToggle();
@@ -16465,8 +16709,6 @@ window.onload = async () => {
   initChatMuteModal();
   const btnMarkAll = document.getElementById('btn-dialogs-mark-all-read');
   if (btnMarkAll) btnMarkAll.onclick = () => markAllDialogsRead();
-  await loadStatus();
-  await loadInstances();
-  await loadPlugins();
+  await Promise.all([loadStatus(), loadInstances(), loadPlugins()]);
   setInterval(loadStatus, 5000);
 };

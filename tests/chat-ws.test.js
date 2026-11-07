@@ -292,29 +292,28 @@ test('outbox receipts update the matching dialog and survive a stale snapshot', 
   assert.equal(state.clientDialogs[0].readOutboxMaxId, 12);
 });
 
-test('reconnecting one channel retains the healthy channel', () => {
+test('chat events and RPC share one connection and reconnect after disconnect', async () => {
   const { manager, sockets, runTimers } = createHarness();
   manager.connect();
-  assert.equal(sockets.length, 2);
-  const [stream, rpc] = sockets;
-  stream.open(); rpc.open();
-  stream.close();
-  runTimers(3000);
-  assert.equal(sockets.length, 3);
-  assert.match(sockets[2].url, /chat-stream$/);
-  assert.equal(rpc.readyState, 1);
-  manager.disconnect();
-});
-
-test('pending RPC requests reject promptly when the RPC connection closes', async () => {
-  const { manager, sockets } = createHarness();
   manager.connect();
-  sockets[0].open(); sockets[1].open();
-  const result = manager.sendRpc('get_dialogs', { instId: 'account-a' });
-  const rejected = assert.rejects(result, /connection|closed/i);
-  sockets[1].close();
+  assert.equal(sockets.length, 1);
+  assert.match(sockets[0].url, /\/ws\/chat$/);
+  sockets[0].open();
+  const pending = manager.sendRpc('get_dialogs', { instId: 'account-a' });
+  const { id } = sockets[0].sent[0];
+  sockets[0].receive({ type: 'new_message', id, instId: 'account-a', message: { id: 2, chatId: '99', text: 'hello' } });
+  sockets[0].receive({ id, success: true, data: ['result'] });
+  assert.deepEqual(Array.from(await pending), ['result']);
+  const interrupted = manager.sendRpc('get_messages', { instId: 'account-a' });
+  const rejected = assert.rejects(interrupted, /connection|closed/i);
+  sockets[0].close();
   await rejected;
+  runTimers(3000);
+  assert.equal(sockets.length, 2);
+  sockets[1].open();
   manager.disconnect();
+  runTimers(3000);
+  assert.equal(sockets.length, 2);
 });
 
 test('outgoing messages in another chat do not increase unread counts', () => {
@@ -348,15 +347,15 @@ test('history pagination replays edits without appending unrelated new messages'
   assert.equal(manager.messageSnapshots.size, 0);
 });
 
-test('stream reconnection refreshes the selected account and story feed only when both channels are open', () => {
+test('reconnection refreshes selected account and story feed after the socket opens', () => {
   const { manager, sockets, renders, storyRefresh, runTimers } = createHarness();
   manager.connect();
-  sockets[0].open(); sockets[1].open();
+  sockets[0].open();
   assert.equal(renders.refreshDialogs, 0);
   sockets[0].close();
   runTimers(3000);
   assert.equal(renders.refreshDialogs, 0);
-  sockets[2].open();
+  sockets[1].open();
   assert.equal(renders.refreshDialogs, 1);
   assert.equal(renders.refreshMessages, 1);
   assert.deepEqual(storyRefresh, [['feed', true, true]]);

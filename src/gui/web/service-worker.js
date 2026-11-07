@@ -1,6 +1,6 @@
 'use strict';
 
-const SHELL_CACHE = 'tguserbot-shell-v1';
+const SHELL_CACHE = 'tguserbot-shell-v2';
 const STATIC_FILE = /\.(?:html|css|js|svg|png|jpe?g|webp|woff2?)$/i;
 const PRIVATE_PATH = /^(?:api|media|upload|ws)(?:\/|$)/i;
 
@@ -13,7 +13,7 @@ self.addEventListener('install', event => {
     const scope = new URL(self.registration.scope);
     const root = new URL('./', scope);
     const cache = await caches.open(SHELL_CACHE);
-    const response = await fetch(root, { cache: 'no-store' });
+    const response = await fetch(root, { cache: 'no-cache' });
     if (!response.ok) throw new Error('Unable to load the offline shell');
     await cache.put(root, response.clone());
     const html = await response.text();
@@ -24,12 +24,14 @@ self.addEventListener('install', event => {
         if (asset.origin === scope.origin && asset.pathname.startsWith(scope.pathname) && !isPrivatePath(asset.pathname, scope.pathname) && STATIC_FILE.test(asset.pathname)) assets.add(asset.href);
       } catch (_) {}
     }
-    await Promise.all([...assets].map(async asset => {
+    // Validate and cache one asset at a time so installation does not occupy
+    // every available connection while the application is loading data.
+    for (const asset of assets) {
       try {
-        const file = await fetch(asset, { cache: 'no-store' });
+        const file = await fetch(asset, { cache: 'no-cache' });
         if (file.ok) await cache.put(asset, file);
       } catch (_) {}
-    }));
+    }
     await self.skipWaiting();
   })());
 });
@@ -60,10 +62,13 @@ self.addEventListener('fetch', event => {
       }
       return response;
     } catch (error) {
-      const cached = await caches.match(request);
+      // An outgoing worker can finish a fetch after activation and recreate
+      // its old cache. Only the current shell version is safe to serve.
+      const cache = await caches.open(SHELL_CACHE);
+      const cached = await cache.match(request);
       if (cached) return cached;
       if (request.mode === 'navigate') {
-        const shell = await caches.match(new URL('./', scope).href);
+        const shell = await cache.match(new URL('./', scope).href);
         if (shell) return shell;
       }
       throw error;
