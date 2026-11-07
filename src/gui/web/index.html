@@ -6,7 +6,7 @@
   <title>TGuserBOT 控制台</title>
   <script>document.documentElement.dataset.theme=localStorage.getItem('tgbot_ui_theme')||'dark';if(document.documentElement.dataset.theme==='system'){document.documentElement.dataset.theme=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}</script>
   <link rel="stylesheet" href="themes.css?v=2">
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=100">
 </head>
 <body>
   <!-- SVG Symbols Sprite (Professional Vector Icons, Zero Emojis) -->
@@ -556,60 +556,92 @@
 
         <!-- 5. Web Client View (像官方客户端一样操作账号 + 便捷功能) -->
         <section id="view-client" class="view-section">
-          <!-- Account Selector & Status Bar -->
-          <div class="client-topbar">
-            <div class="client-topbar-left">
-              <label class="form-label" style="margin: 0; font-size: 13px;">选择账号:</label>
-              <select class="select-control" id="client-account-select" style="min-width: 130px;">
-                <option value="">加载中...</option>
-              </select>
-              <div class="client-account-badge" id="client-account-badge">
-                <span class="status-dot"></span>
-                <span id="client-account-name">未选择账号</span>
-              </div>
-            </div>
-            <div class="client-topbar-right">
-              <button class="btn btn-secondary btn-sm" id="btn-client-toggle-online" title="切换在线/隐身状态">
-                <svg class="ui-icon-sm"><use href="#icon-radio"/></svg>
-                <span id="client-online-text">设为隐身</span>
-              </button>
-              <button class="btn btn-secondary btn-sm" id="btn-client-open-profile" title="查看与修改账号资料">
-                <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
-                <span class="btn-text">修改资料</span>
-              </button>
-              <button class="btn btn-secondary btn-sm" id="btn-client-open-broadcast" title="群发广播消息">
-                <svg class="ui-icon-sm"><use href="#icon-broadcast"/></svg>
-                <span class="btn-text">消息群发</span>
-              </button>
-              <button class="btn btn-secondary btn-sm" id="btn-client-refresh-dialogs" title="刷新对话列表">
-                <svg class="ui-icon-sm"><use href="#icon-refresh"/></svg>
-                <span class="btn-text">刷新</span>
-              </button>
-            </div>
-          </div>
-
           <!-- Client Main Layout (Three Columns with Telegram K/Z style) -->
           <div class="client-layout">
             <!-- Left: Dialogs Sidebar -->
             <div class="client-dialogs-pane">
+              <div class="client-topbar">
+                <div class="client-topbar-left">
+                  <button class="btn-icon-subtle client-admin-menu" id="btn-client-admin-menu" type="button" title="打开控制台导航" aria-label="打开控制台导航">
+                    <svg class="ui-icon"><use href="#icon-menu"/></svg>
+                  </button>
+                  <label class="form-label" style="margin: 0; font-size: 13px;">选择账号:</label>
+                  <select class="select-control" id="client-account-select" style="min-width: 130px;">
+                    <option value="">加载中...</option>
+                  </select>
+                  <div class="client-account-badge" id="client-account-badge">
+                    <span class="status-dot"></span>
+                    <span id="client-account-name">未选择账号</span>
+                  </div>
+                </div>
+                <div class="client-topbar-right">
+                  <button class="btn btn-secondary btn-sm" id="btn-client-toggle-online" title="切换在线/隐身状态" aria-label="切换在线/隐身状态">
+                    <svg class="ui-icon-sm"><use href="#icon-radio"/></svg>
+                    <span id="client-online-text">设为隐身</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-client-open-profile" title="查看与修改账号资料" aria-label="查看与修改账号资料">
+                    <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
+                    <span class="btn-text">修改资料</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-client-open-broadcast" title="群发广播消息" aria-label="消息群发">
+                    <svg class="ui-icon-sm"><use href="#icon-broadcast"/></svg>
+                    <span class="btn-text">消息群发</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-client-refresh-dialogs" title="刷新对话列表" aria-label="刷新对话列表">
+                    <svg class="ui-icon-sm"><use href="#icon-refresh"/></svg>
+                    <span class="btn-text">刷新</span>
+                  </button>
+                </div>
+              </div>
               <div class="dialogs-header">
                 <div class="search-input-wrapper">
                   <svg class="search-icon"><use href="#icon-search"/></svg>
                   <input type="text" class="input-control search-input" id="client-dialogs-search" placeholder="搜索">
                   <button type="button" class="btn-icon-subtle" id="btn-dialogs-mark-all-read" title="一键全部标记为已读"><svg class="ui-icon-xs"><use href="#icon-check"/></svg></button>
                 </div>
-                <div class="dialogs-tabs">
+                <button type="button" class="btn btn-secondary btn-sm dialogs-icon-action" id="btn-create-chat" title="新建群组或频道" aria-label="新建群组或频道">
+                  <svg class="ui-icon-sm"><use href="#icon-plus"/></svg><span>新建群组 / 频道</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm dialogs-icon-action" id="btn-global-message-search" aria-pressed="false" title="搜索所有消息" aria-label="搜索所有消息">
+                  <svg class="ui-icon-sm" aria-hidden="true"><use href="#icon-search-chat"/></svg><span class="dialogs-icon-label">搜索消息</span>
+                </button>
+                <select class="input-control global-message-search-filter" id="global-message-search-filter" aria-label="全局消息类型筛选" hidden>
+                  <option value="">全部类型</option><option value="photos">照片</option><option value="videos">视频</option>
+                  <option value="files">文件</option><option value="links">链接</option><option value="music">音乐</option>
+                  <option value="voice">语音</option><option value="round-video">圆视频</option><option value="round-voice">视频消息</option>
+                  <option value="geo">位置</option><option value="calls">通话</option>
+                </select>
+                <div class="dialogs-tabs" tabindex="0" aria-label="会话分类">
                   <button class="dialog-tab active" data-type="all">全部</button>
+                  <button class="dialog-tab" data-type="archived">归档</button>
                   <button class="dialog-tab" data-type="unread" id="tab-unread">未读 <span class="tab-badge" id="badge-unread-total" style="display:none;">0</span></button>
                   <button class="dialog-tab" data-type="private">私聊</button>
                   <button class="dialog-tab" data-type="group">群组</button>
                   <button class="dialog-tab" data-type="channel">频道</button>
                   <button class="dialog-tab" data-type="bot">机器人</button>
+                  <button type="button" class="dialog-tab dialog-folder-manage-tab" id="btn-manage-dialog-folders" title="创建和管理 Telegram 会话文件夹">管理文件夹</button>
                 </div>
               </div>
+              <section class="client-stories-bar" id="client-stories-bar" aria-label="Telegram 动态">
+                <div class="client-stories-heading">
+                  <strong>动态</strong>
+                  <div class="client-stories-actions">
+                    <button type="button" class="story-feed-filter active" data-story-feed-hidden="0" aria-pressed="true">好友</button>
+                    <button type="button" class="story-feed-filter" data-story-feed-hidden="1" aria-pressed="false">已隐藏</button>
+                    <button type="button" class="btn-icon-subtle" id="btn-client-stories-refresh" title="刷新动态"><svg class="ui-icon-xs"><use href="#icon-refresh"/></svg></button>
+                  </div>
+                </div>
+                <div class="client-stories-list" id="client-stories-list" role="list" aria-label="动态联系人">
+                  <div class="story-feed-status">正在加载动态…</div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm client-stories-more" id="btn-client-stories-more" hidden>加载更多</button>
+                <div class="client-stories-status" id="client-stories-status" role="status"></div>
+              </section>
+              <div id="client-folder-notice" class="folder-notice" hidden>此文件夹仅筛选已加载的会话；可在列表底部加载更多。</div>
               <div class="dialogs-list" id="client-dialogs-list">
                 <div class="empty-state">请先启动或选择在线账号</div>
               </div>
+              <div class="dialogs-list global-message-results" id="global-message-results" hidden aria-live="polite"></div>
             </div>
 
             <!-- Center: Active Chat Room -->
@@ -629,16 +661,21 @@
                     <div class="chat-subtitle" id="client-chat-subtitle">选择一个会话开始聊天</div>
                   </div>
                 </div>
-                <div class="chat-header-actions" id="client-chat-actions" style="display: none;">
+                <div class="chat-header-actions" id="client-chat-actions" style="display: none;" tabindex="0" aria-label="聊天操作">
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-bot-menu" type="button" hidden>菜单</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-pinned" type="button" hidden>置顶消息</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-topics" type="button" hidden>话题</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-discussion-group" type="button" hidden title="管理此频道的关联讨论群">关联讨论群</button>
                   <button class="btn btn-secondary btn-sm" id="btn-chat-search-toggle" title="在当前聊天中搜索消息">
                     <svg class="ui-icon-sm"><use href="#icon-search-chat"/></svg>
                     <span class="btn-text">搜索</span>
                   </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-translation-toggle" type="button" hidden aria-pressed="false" title="始终翻译此对话">始终翻译</button>
                   <button class="btn btn-secondary btn-sm" id="btn-chat-drawer-toggle" title="查看主页资料、动态与媒体">
                     <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
                     <span class="btn-text">资料/动态</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-theme-toggle" title="切换聊天壁纸与暗黑主题">
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-theme-toggle" title="本机聊天风格与 Telegram 会话主题和壁纸">
                     <svg class="ui-icon-sm"><use href="#icon-palette"/></svg>
                     <span class="btn-text">壁纸</span>
                   </button>
@@ -660,10 +697,21 @@
                 </div>
               </div>
 
+              <div class="saved-message-tags-bar" id="saved-message-tags-bar" hidden>
+                <div class="saved-message-tags-scroll" id="saved-message-tags-scroll" role="tablist" aria-label="Saved Messages 标签"></div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-manage-saved-message-tags">管理标签</button>
+              </div>
+
               <!-- Inline Chat Search Bar -->
               <div class="chat-search-bar" id="chat-search-bar" style="display: none;">
                 <svg class="search-icon"><use href="#icon-search"/></svg>
                 <input type="text" class="input-control search-input" id="chat-search-input" placeholder="在当前会话中检索历史消息 (按 Enter 深度检索)...">
+                <select class="input-control chat-search-filter" id="chat-search-filter" aria-label="搜索消息类型" title="筛选消息类型">
+                  <option value="">全部类型</option><option value="photos">照片</option><option value="videos">视频</option>
+                  <option value="files">文件</option><option value="links">链接</option><option value="music">音乐</option>
+                  <option value="voice">语音</option><option value="round-video">圆视频</option><option value="round-voice">视频消息</option>
+                  <option value="geo">位置</option><option value="calls">通话</option>
+                </select>
                 <button type="button" class="btn-icon-subtle" id="btn-chat-search-calendar" title="按日期快速跳转 (Jump to Date)"><svg class="ui-icon-xs"><use href="#icon-calendar"/></svg></button>
                 <span class="chat-search-stats" id="chat-search-stats" style="display: none; font-size: 12px; color: var(--text-muted); margin: 0 6px; white-space: nowrap;">0 / 0</span>
                 <button type="button" class="btn-icon-subtle" id="btn-chat-search-prev" title="上一个匹配项" style="display: none;"><svg class="ui-icon-xs"><use href="#icon-chevron-left"/></svg></button>
@@ -675,10 +723,15 @@
               <div class="chat-pinned-bar" id="chat-pinned-bar" style="display: none;">
                 <svg class="ui-icon-sm" style="color:var(--color-primary); flex-shrink: 0;"><use href="#icon-pin"/></svg>
                 <div class="pinned-text" id="chat-pinned-text">置顶消息</div>
+                <button class="btn btn-secondary btn-sm" id="btn-pinned-list" type="button">查看全部</button>
                 <button class="btn-icon-subtle" id="btn-pinned-close" title="忽略"><svg class="ui-icon-sm"><use href="#icon-close"/></svg></button>
               </div>
 
               <!-- Messages List -->
+              <div class="client-history-banner" id="client-history-banner" hidden>
+                <span>正在查看历史消息</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-chat-return-latest">回到最新消息</button>
+              </div>
               <div class="chat-messages-container" id="client-messages-container">
                 <div class="chat-placeholder">
                   <svg class="placeholder-icon"><use href="#icon-chat"/></svg>
@@ -704,7 +757,16 @@
                 </div>
               </div>
 
+              <!-- Bot reply keyboard belongs to the composer, not a message bubble. -->
+              <div id="bot-reply-keyboard" class="bot-reply-keyboard" hidden></div>
+
               <!-- Message Input Bar -->
+              <div class="cloud-draft-status" id="cloud-draft-status" role="status" hidden>
+                <span id="cloud-draft-status-text"></span>
+                <button type="button" class="btn btn-secondary btn-xs" id="cloud-draft-use-remote">使用云端草稿</button>
+                <button type="button" class="btn btn-secondary btn-xs" id="cloud-draft-use-local">用本地草稿覆盖</button>
+                <button type="button" class="btn btn-secondary btn-xs" id="cloud-draft-retry">重新读取</button>
+              </div>
               <div class="chat-input-bar" id="client-input-bar">
                 <!-- Voice Recording Overlay Bar -->
                 <div class="chat-voice-recording-bar" id="chat-voice-recording-bar" style="display: none;">
@@ -726,6 +788,15 @@
                       <svg class="ui-icon-xs"><use href="#icon-send"/></svg>
                       <span>发送语音</span>
                     </button>
+                  </div>
+                </div>
+                <div class="chat-video-recording-bar" id="chat-video-recording-bar" hidden>
+                  <video class="chat-video-recording-preview" id="chat-video-recording-preview" muted autoplay playsinline></video>
+                  <div class="rec-status-wrap"><span class="rec-dot"></span><span class="rec-timer" id="video-rec-timer">00:00</span></div>
+                  <span class="chat-video-recording-label">录制圆形视频</span>
+                  <div class="rec-actions">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-cancel-video-rec" title="放弃视频录制">放弃</button>
+                    <button type="button" class="btn btn-primary btn-xs" id="btn-finish-video-rec" title="完成并添加圆形视频">完成</button>
                   </div>
                 </div>
 
@@ -757,6 +828,9 @@
                     <span class="attachment-chip-size" id="attachment-chip-size">(1.2 MB)</span>
                     <button type="button" class="btn-icon-subtle attachment-chip-del" id="btn-cancel-attachment" title="移除附件"><svg class="ui-icon-xs"><use href="#icon-close"/></svg></button>
                   </div>
+                  <label class="caption-above-option" id="chat-caption-above-option" hidden><input type="checkbox" id="chat-caption-above"> 说明文字显示在媒体上方</label>
+                  <label class="caption-above-option" id="chat-video-note-option" hidden><input type="checkbox" id="chat-video-note"> 作为 Telegram 圆形视频消息发送</label>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-chat-paid-media" hidden>设置付费媒体价格</button>
                 </div>
 
                 <!-- Main Input Field Row -->
@@ -766,18 +840,37 @@
                     <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-attach" title="选择附件并发送 (图片、音频、文件)">
                       <svg class="ui-icon"><use href="#icon-attach"/></svg>
                     </button>
-                    <input type="file" id="chat-file-input" style="display: none;">
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-video-note" title="录制 Telegram 圆形视频消息" aria-label="录制圆形视频消息">
+                      <svg class="ui-icon"><use href="#icon-video"/></svg>
+                    </button>
+                    <input type="file" id="chat-file-input" accept="image/*,video/*,*/*" multiple style="display: none;">
                     <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-poll" title="创建投票与问卷">
                       <svg class="ui-icon"><use href="#icon-poll"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-dice" title="发送 Telegram 骰子" aria-label="选择并发送骰子" aria-expanded="false" aria-controls="chat-dice-picker">🎲</button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-todo" title="创建 Telegram 待办清单" aria-label="创建待办清单">
+                      <svg class="ui-icon"><use href="#icon-check"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-quick-replies" title="发送快捷回复" hidden>
+                      <svg class="ui-icon"><use href="#icon-reply"/></svg>
                     </button>
                     <button type="button" class="btn-icon-subtle chat-side-btn chat-expr-btn" id="btn-chat-expression-toggle" title="表情、贴纸与 GIF (TG桌面端面板)">
                       <svg class="ui-icon"><use href="#icon-smile"/></svg>
                     </button>
                   </div>
+                  <div class="chat-dice-picker" id="chat-dice-picker" role="group" aria-label="选择 Telegram 骰子" hidden>
+                    <button type="button" data-dice-emoji="🎲" aria-label="掷骰子">🎲</button>
+                    <button type="button" data-dice-emoji="🎯" aria-label="投飞镖">🎯</button>
+                    <button type="button" data-dice-emoji="🏀" aria-label="投篮球">🏀</button>
+                    <button type="button" data-dice-emoji="⚽" aria-label="踢足球">⚽</button>
+                    <button type="button" data-dice-emoji="🎳" aria-label="打保龄球">🎳</button>
+                    <button type="button" data-dice-emoji="🎰" aria-label="玩老虎机">🎰</button>
+                  </div>
 
                   <!-- Center: Textarea with active status tags -->
                   <div class="chat-input-center-wrap">
-                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="消息" title="支持富文本、文件拖入，右键调出功能菜单" rows="1"></textarea>
+                    <textarea class="chat-textarea" id="client-message-textarea" placeholder="输入消息..." title="支持富文本、文件拖入，右键调出功能菜单" rows="1"></textarea>
+                    <div class="quick-reply-suggestions" id="quick-reply-suggestions" role="listbox" aria-label="快速回复建议"></div>
                     <div class="chat-input-badges" id="chat-input-badges">
                       <span class="chat-badge-pill" id="badge-silent" style="display: none;" title="当前已开启静默发送">
                         <svg class="ui-icon-xs" style="width:10px;height:10px;"><use href="#icon-broadcast"/></svg> 静默发送
@@ -789,8 +882,14 @@
 
                   <!-- Right: Menu + Schedule + Morph Button (mic↔send) -->
                   <div class="chat-input-right-actions">
+                    <select class="chat-effect-select" id="chat-message-effect" aria-label="消息发送效果" title="Telegram 消息效果" disabled>
+                      <option value="">效果</option>
+                    </select>
                     <button type="button" class="btn-icon-subtle chat-more-btn" id="btn-chat-more-menu" title="快捷菜单与发送设置">
                       <svg class="ui-icon"><use href="#icon-dots-vertical"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-scheduled-messages" title="查看计划消息">
+                      <svg class="ui-icon"><use href="#icon-clock"/></svg>
                     </button>
                     <button type="button" class="btn-icon-subtle chat-side-btn" id="btn-chat-schedule" title="定时发送">
                       <svg class="ui-icon"><use href="#icon-clock"/></svg>
@@ -818,6 +917,7 @@
                     <button type="button" class="fmt-pill" data-fmt="strike" title="删除线"><s>S</s> 删除线</button>
                     <button type="button" class="fmt-pill" data-fmt="code" title="行内代码">&lt;/&gt; 代码</button>
                     <button type="button" class="fmt-pill" data-fmt="spoiler" title="剧透隐藏">|| 剧透</button>
+                    <button type="button" class="fmt-pill" data-fmt="blockquote" title="引用文本">❝ 引用</button>
                     <button type="button" class="fmt-pill" data-fmt="link" title="插入超链接 (Ctrl+K)">
                       <svg class="ui-icon-xs" style="width:11px;height:11px;vertical-align:middle;"><use href="#icon-link"/></svg> 链接
                     </button>
@@ -856,6 +956,21 @@
                       <button type="button" class="seg-item" data-val="ctrlEnter">Ctrl+Enter 发送</button>
                     </div>
                   </div>
+
+                  <div class="menu-divider"></div>
+
+                  <button type="button" class="menu-action-item menu-share-action" id="menu-share-location">
+                    <svg class="ui-icon-sm"><use href="#icon-pin"/></svg>
+                    <span>分享当前位置</span>
+                  </button>
+                  <button type="button" class="menu-action-item menu-share-action" id="menu-share-live-location">
+                    <svg class="ui-icon-sm"><use href="#icon-pin"/></svg>
+                    <span>分享实时位置</span>
+                  </button>
+                  <button type="button" class="menu-action-item menu-share-action" id="menu-share-contact">
+                    <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
+                    <span>分享联系人</span>
+                  </button>
 
                   <div class="menu-divider"></div>
 
@@ -917,10 +1032,18 @@
                 </div>
 
                 <div class="profile-info-list">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-change-group-photo" hidden>更换群组头像</button>
+                  <input type="file" id="group-photo-file" accept="image/jpeg,image/png,image/webp" hidden>
+                  <div class="empty-hint" id="group-photo-status" role="status"></div>
+                </div>
+
+                <div class="profile-info-list">
                   <div class="profile-info-item" id="profile-item-bio">
                     <div class="profile-info-label">个人简介 / 说明 (Bio)</div>
                     <div class="profile-info-val" id="profile-val-bio">暂无简介说明</div>
                   </div>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-group-info" hidden>编辑群组资料</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-chat-permissions" hidden>群组权限</button>
                   <div class="profile-info-item" id="profile-item-phone" style="display: none;">
                     <div class="profile-info-label">电话号码 (Phone)</div>
                     <div class="profile-info-val" id="profile-val-phone">+1...</div>
@@ -932,6 +1055,21 @@
                   <div class="profile-info-item" id="profile-item-members" style="display: none;">
                     <div class="profile-info-label">群组成员数</div>
                     <div class="profile-info-val" id="profile-val-members">0</div>
+                  </div>
+                  <div class="profile-info-item profile-history-ttl" id="profile-item-history-ttl" hidden>
+                    <label class="profile-info-label" for="profile-history-ttl">自动删除消息</label>
+                    <select class="form-input" id="profile-history-ttl" aria-describedby="profile-history-ttl-status">
+                      <option value="0">关闭</option>
+                      <option value="86400">1 天</option><option value="172800">2 天</option>
+                      <option value="259200">3 天</option><option value="345600">4 天</option>
+                      <option value="432000">5 天</option><option value="518400">6 天</option>
+                      <option value="604800">1 周</option><option value="1209600">2 周</option><option value="1814400">3 周</option>
+                      <option value="2592000">1 个月</option><option value="5184000">2 个月</option>
+                      <option value="7776000">3 个月</option><option value="10368000">4 个月</option>
+                      <option value="12960000">5 个月</option><option value="15552000">6 个月</option>
+                      <option value="31536000">1 年</option>
+                    </select>
+                    <div class="empty-hint" id="profile-history-ttl-status" role="status"></div>
                   </div>
                 </div>
 
@@ -947,6 +1085,44 @@
                   <div class="stories-scroll-wrap" id="profile-stories-container">
                     <div class="empty-hint">暂无活跃动态发布</div>
                   </div>
+                  <section class="profile-story-albums" id="profile-story-albums" hidden>
+                    <label for="profile-story-albums-select">固定动态相册</label>
+                    <select class="form-input" id="profile-story-albums-select" aria-label="选择故事相册">
+                      <option value="">选择相册</option>
+                    </select>
+                    <img class="story-album-cover-preview" id="profile-story-albums-cover" alt="" hidden>
+                    <div class="stories-scroll-wrap" id="profile-story-albums-list"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-story-albums-more" hidden>加载更多</button>
+                    <div class="empty-hint" id="profile-story-albums-status" role="status"></div>
+                  </section>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-stories-archive" hidden>查看动态档案</button>
+                  <div id="profile-stories-archive" hidden>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-stories-archive-back">返回活跃动态</button>
+                    <section class="story-album-manager">
+                      <div class="story-album-selectors">
+                        <label>浏览
+                          <select class="form-input" id="profile-story-album-filter"><option value="">全部动态</option></select>
+                        </label>
+                        <label>目标相册
+                          <select class="form-input" id="profile-story-album-target"><option value="">选择相册</option></select>
+                        </label>
+                      </div>
+                      <img class="story-album-cover-preview" id="profile-story-album-cover" alt="" hidden>
+                      <div class="story-album-actions">
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-create-story-album">新建相册</button>
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-rename-story-album" disabled>重命名</button>
+                        <button type="button" class="btn btn-danger btn-xs" id="btn-delete-story-album" disabled>删除相册</button>
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-move-story-album-up" disabled>相册上移</button>
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-move-story-album-down" disabled>相册下移</button>
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-add-stories-to-album" disabled>加入相册</button>
+                        <button type="button" class="btn btn-secondary btn-xs" id="btn-remove-stories-from-album" disabled>从相册移除</button>
+                      </div>
+                      <div id="profile-story-album-status" class="story-album-status" role="status"></div>
+                    </section>
+                    <div class="stories-scroll-wrap" id="profile-stories-archive-container"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-stories-archive-more" hidden>加载更多</button>
+                    <div class="empty-hint" id="profile-stories-archive-status" role="status"></div>
+                  </div>
                 </div>
               </div>
 
@@ -955,8 +1131,12 @@
                 <div class="members-header-bar">
                   <div class="members-search-wrap">
                     <svg class="ui-icon-xs search-icon"><use href="#icon-search"/></svg>
-                    <input type="text" class="input-control input-sm" id="member-search-input" placeholder="按昵称或用户名搜索成员...">
+                    <input type="search" class="input-control input-sm" id="member-search-input" placeholder="搜索成员名称、用户名或 ID…" aria-label="搜索群成员">
                   </div>
+                  <button class="btn btn-secondary btn-xs" id="btn-add-group-members" type="button" hidden>添加成员</button>
+                  <button class="btn btn-secondary btn-xs" id="btn-view-join-requests" type="button">入群申请</button>
+                  <button class="btn btn-secondary btn-xs" id="btn-view-banned-members" type="button" hidden>封禁用户</button>
+                  <button class="btn btn-secondary btn-xs" id="btn-view-invite-links" type="button" hidden>邀请链接</button>
                   <button class="btn-icon-subtle" id="btn-refresh-members" title="刷新成员列表"><svg class="ui-icon-xs"><use href="#icon-refresh"/></svg></button>
                 </div>
                 <div class="members-list-body" id="members-list-container">
@@ -1064,8 +1244,12 @@
                   </div>
                   <div class="expr-search-box">
                     <svg class="search-icon-sm"><use href="#icon-search"/></svg>
-                    <input type="text" class="input-control input-xs" id="emoji-search-input" placeholder="搜索 Emoji...">
+                    <input type="text" class="input-control input-xs" id="emoji-search-input" placeholder="搜索 Emoji 或输入一个表情">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-search-custom-emoji" title="按 Emoji 搜索可发送的动态自定义表情">动态表情</button>
                   </div>
+                  <div class="emoji-keyword-search-status" id="emoji-keyword-search-status" role="status" aria-live="polite" hidden></div>
+                  <div class="custom-emoji-search-status" id="custom-emoji-search-status" role="status" hidden></div>
+                  <div class="custom-emoji-search-results" id="custom-emoji-search-results" aria-label="动态自定义表情结果"></div>
                   <div class="emoji-grid" id="emoji-grid">
                     <!-- Populated by JavaScript -->
                   </div>
@@ -1077,8 +1261,11 @@
                 <div class="stickers-wrapper">
                   <div class="expr-search-box">
                     <svg class="search-icon-sm"><use href="#icon-search"/></svg>
-                    <input type="text" class="input-control input-xs" id="stickers-search-input" placeholder="在安装的表情包中过滤...">
+                    <input type="text" class="input-control input-xs" id="stickers-search-input" placeholder="过滤已安装贴纸或输入名称..." maxlength="128">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-search-telegram-stickers">Telegram 搜索</button>
                   </div>
+                  <div class="sticker-search-status" id="sticker-search-status" role="status" hidden></div>
+                  <div class="sticker-search-grid" id="sticker-search-results"></div>
                   <div class="stickers-stream" id="stickers-stream-container">
                     <div class="empty-hint">正在加载 Telegram 表情包...</div>
                   </div>
@@ -1092,6 +1279,13 @@
               <!-- Expression Tab 3: Telegram Saved GIFs -->
               <div class="drawer-pane expr-pane" id="drawer-tab-gifs" style="display: none;">
                 <div class="gifs-wrapper">
+                  <div class="expr-search-box">
+                    <svg class="search-icon-sm"><use href="#icon-search"/></svg>
+                    <input type="search" class="input-control input-xs" id="gif-search-input" placeholder="搜索 GIF" maxlength="128" autocomplete="off" aria-label="搜索 GIF">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-more-gif-search" hidden>更多结果</button>
+                  </div>
+                  <div class="sticker-search-status" id="gif-search-status" role="status" aria-live="polite" hidden></div>
+                  <div class="gifs-search-grid" id="gif-search-results"></div>
                   <div class="gifs-stream" id="gifs-stream-container">
                     <div class="empty-hint">正在获取收藏的 GIF 动图...</div>
                   </div>
@@ -1206,6 +1400,12 @@
         <div class="form-group" id="auth-group-phone">
           <label class="form-label">国际格式手机号 (例: +8613800000000)</label>
           <input type="text" class="form-input" id="auth-input-phone" placeholder="+86...">
+          <button type="button" class="btn btn-secondary" id="btn-auth-qr">使用 Telegram 扫码登录</button>
+        </div>
+
+        <div class="form-group" id="auth-group-qr" style="display: none; align-items: center;">
+          <img id="auth-qr-image" alt="Telegram 登录二维码" width="256" height="256" style="display: none; max-width: 100%; background: white;">
+          <span id="auth-qr-status" aria-live="polite">正在获取二维码...</span>
         </div>
 
         <!-- Step: Code -->
@@ -1473,7 +1673,7 @@
         <div class="profile-summary-box">
           <div class="profile-avatar-large" id="profile-avatar-large">TG</div>
           <div class="profile-summary-details">
-            <h4 id="profile-display-name">--</h4>
+            <h4 id="profile-editor-display-name">--</h4>
             <p id="profile-display-username">@--</p>
             <div class="profile-tags">
               <span class="profile-tag" id="profile-display-id">ID: --</span>
@@ -1497,10 +1697,41 @@
           <label class="form-label">个人简介 (Bio / About - 最多70字)</label>
           <textarea class="form-textarea" id="profile-input-bio" maxlength="70" placeholder="关于自己的简要说明..." style="min-height: 70px;"></textarea>
         </div>
+
+        <div class="form-group" id="profile-emoji-status-group">
+          <label class="form-label">Emoji 状态</label>
+          <div class="profile-emoji-status-current" id="profile-emoji-status-current" role="status">加载中…</div>
+          <div class="profile-emoji-status-controls">
+            <label class="profile-emoji-status-duration-label" for="profile-emoji-status-duration">有效期</label>
+            <select class="form-input" id="profile-emoji-status-duration">
+              <option value="0">一直显示</option>
+              <option value="3600">1 小时</option>
+              <option value="28800">8 小时</option>
+              <option value="172800">2 天</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-emoji-status-clear" hidden>清除状态</button>
+          </div>
+          <div class="profile-emoji-status-options" id="profile-emoji-status-options" role="group" aria-label="可用 Emoji 状态"></div>
+          <div class="form-hint" id="profile-emoji-status-hint">Telegram 会按账号权限检查状态是否可用。</div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-cancel-profile">取消</button>
         <button class="btn btn-primary" id="btn-save-profile">保存修改</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-saved-message-tags">
+    <div class="modal-window" style="width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Saved Messages 标签</h3>
+        <button type="button" class="modal-close" id="btn-close-saved-message-tags" aria-label="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint">Premium 账号可用 Telegram Emoji 标签整理收藏消息。点按标签可重命名；删除只移除标签设置，不删除收藏消息。</p>
+        <div class="saved-message-tag-editor-list" id="saved-message-tag-editor-list" role="list"></div>
+        <div class="form-hint" id="saved-message-tag-editor-status" role="status"></div>
       </div>
     </div>
   </div>
@@ -1600,6 +1831,16 @@
         <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
           <label class="form-label">或自定义发送日期与时间</label>
           <input type="datetime-local" class="form-input" id="schedule-datetime-input">
+        </div>
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+          <label class="form-label" for="schedule-repeat-period">重复周期</label>
+          <select class="form-input" id="schedule-repeat-period">
+            <option value="0">不重复</option>
+            <option value="86400">每天</option>
+            <option value="604800">每 7 天</option>
+            <option value="2592000">每 30 天</option>
+            <option value="31536000">每 365 天</option>
+          </select>
         </div>
       </div>
       <div class="modal-footer">
@@ -1838,6 +2079,98 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-dialog-folder-manager" style="display:none;">
+    <div class="modal-window dialog-folder-manager-window">
+      <div class="modal-header">
+        <h3 class="modal-title">Telegram 会话文件夹</h3>
+        <button type="button" class="modal-close" id="btn-close-dialog-folder-manager" aria-label="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body dialog-folder-manager-body">
+        <aside class="dialog-folder-manager-list">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-new-dialog-folder">新建文件夹</button>
+          <div id="dialog-folder-manager-items" class="dialog-folder-manager-items"></div>
+        </aside>
+        <section class="dialog-folder-manager-editor">
+          <div class="form-group">
+            <label class="form-label" for="dialog-folder-title">名称</label>
+            <input class="form-input" id="dialog-folder-title" maxlength="32" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dialog-folder-emoticon">图标 Emoji（可选）</label>
+            <input class="form-input dialog-folder-emoticon" id="dialog-folder-emoticon" maxlength="16" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dialog-folder-color">文件夹颜色标签（Premium）</label>
+            <select class="form-input" id="dialog-folder-color">
+              <option value="">不设置颜色</option>
+              <option value="0">红色</option><option value="1">橙色</option><option value="2">紫色</option>
+              <option value="3">绿色</option><option value="4">青色</option><option value="5">蓝色</option>
+              <option value="6">粉色</option>
+            </select>
+          </div>
+          <label class="dialog-folder-tags-toggle">
+            <input type="checkbox" id="dialog-folder-tags-enabled">
+            在其他文件夹中显示会话标签
+          </label>
+          <p class="dialog-folder-tags-hint">设置会同步到 Telegram。标签功能需要 Premium；实际权限由 Telegram 检查。</p>
+          <fieldset class="dialog-folder-flags">
+            <legend>自动包含</legend>
+            <label><input type="checkbox" data-folder-flag="contacts"> 联系人</label>
+            <label><input type="checkbox" data-folder-flag="nonContacts"> 非联系人</label>
+            <label><input type="checkbox" data-folder-flag="groups"> 群组</label>
+            <label><input type="checkbox" data-folder-flag="broadcasts"> 频道</label>
+            <label><input type="checkbox" data-folder-flag="bots"> 机器人</label>
+          </fieldset>
+          <fieldset class="dialog-folder-flags">
+            <legend>排除</legend>
+            <label><input type="checkbox" data-folder-flag="excludeMuted"> 已静音</label>
+            <label><input type="checkbox" data-folder-flag="excludeRead"> 已读</label>
+            <label><input type="checkbox" data-folder-flag="excludeArchived"> 已归档</label>
+          </fieldset>
+          <div class="dialog-folder-peers-header">
+            <strong>指定会话</strong>
+            <span id="dialog-folder-peer-summary"></span>
+          </div>
+          <input class="form-input" id="dialog-folder-peer-search" type="search" maxlength="128" placeholder="搜索联系人、群组或频道">
+          <div id="dialog-folder-peer-results" class="dialog-folder-peer-results" aria-live="polite">搜索会话后可单独包含、排除或置顶。</div>
+          <section class="dialog-folder-invite-import">
+            <div class="dialog-folder-peers-header"><strong>加入共享文件夹</strong></div>
+            <p class="dialog-folder-tags-hint">粘贴 Telegram 的共享文件夹链接，检查内容后选择要加入的会话。</p>
+            <div class="dialog-folder-invite-import-form">
+              <input class="form-input" id="dialog-folder-invite-url" type="url" maxlength="512" placeholder="https://t.me/addlist/…" autocomplete="off">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-preview-dialog-folder-invite">预览</button>
+            </div>
+            <div id="dialog-folder-invite-preview" class="dialog-folder-invite-preview" aria-live="polite"></div>
+            <div id="dialog-folder-invite-peers" class="dialog-folder-invite-peers"></div>
+            <div class="dialog-folder-invite-import-actions">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-select-dialog-folder-invite-peers" hidden>取消全选</button>
+              <button type="button" class="btn btn-primary btn-xs" id="btn-join-dialog-folder-invite" disabled>加入文件夹</button>
+            </div>
+          </section>
+          <section class="dialog-folder-invites">
+            <div class="dialog-folder-peers-header">
+              <strong>共享文件夹链接</strong>
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-create-dialog-folder-invite">创建链接</button>
+            </div>
+            <p class="dialog-folder-tags-hint">选择要放入此链接的群组和频道；同一文件夹可创建包含不同会话的链接。</p>
+            <div id="dialog-folder-share-status" class="dialog-folder-invites-empty" aria-live="polite"></div>
+            <div id="dialog-folder-share-peers" class="dialog-folder-invite-peers"></div>
+            <div class="dialog-folder-invite-import-actions">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-select-dialog-folder-share-peers" hidden>取消全选</button>
+            </div>
+            <div id="dialog-folder-invites-list" class="dialog-folder-invites-list" aria-live="polite"></div>
+          </section>
+        </section>
+      </div>
+      <div class="modal-footer dialog-folder-manager-footer">
+        <button type="button" class="btn btn-danger btn-sm" id="btn-delete-dialog-folder" hidden>删除文件夹</button>
+        <span id="dialog-folder-manager-status" role="status"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-dialog-folder-manager">关闭</button>
+        <button type="button" class="btn btn-primary" id="btn-save-dialog-folder">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Miuix Hyperlink Insertion -->
   <div class="modal-overlay" id="modal-insert-link" style="display: none;">
     <div class="modal-window mi-modal-window" style="width: 440px;">
@@ -1938,7 +2271,14 @@
       <button class="reaction-pill" data-reaction="😂" title="笑哭">😂</button>
       <button class="reaction-pill" data-reaction="🔥" title="着火">🔥</button>
       <button class="reaction-pill" data-reaction="🎉" title="庆祝">🎉</button>
+      <button class="reaction-pill reaction-more" id="btn-more-message-reactions" type="button" aria-label="更多表情反应" aria-expanded="false" title="更多反应">＋</button>
     </div>
+    <div class="msg-reaction-picker" id="msg-reaction-picker" hidden>
+      <input class="msg-reaction-search" id="msg-reaction-search" type="search" maxlength="64" placeholder="搜索反应" aria-label="搜索反应">
+      <div class="msg-reaction-grid" id="msg-reaction-grid" role="group" aria-label="可用反应"></div>
+      <div class="msg-reaction-status" id="msg-reaction-status" role="status"></div>
+    </div>
+    <div class="saved-message-tag-picker" id="saved-message-tag-picker" hidden role="group" aria-label="Saved Messages 标签"></div>
     <div class="msg-menu-divider"></div>
     <div class="msg-menu-list">
       <button class="msg-menu-item" id="menu-action-reply">
@@ -1957,6 +2297,18 @@
         <svg class="ui-icon-sm"><use href="#icon-tools"/></svg>
         <span>翻译消息</span>
       </button>
+      <button class="msg-menu-item" id="menu-action-read-aloud" type="button" style="display: none;">
+        <svg class="ui-icon-sm"><use href="#icon-volume"/></svg>
+        <span id="menu-action-read-aloud-text">朗读消息</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-read-participants" style="display: none;">
+        <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
+        <span>查看已读成员</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-saved-tags" type="button" style="display: none;" aria-expanded="false">
+        <svg class="ui-icon-sm"><use href="#icon-smile"/></svg>
+        <span>Saved Messages 标签</span>
+      </button>
       <button class="msg-menu-item" id="menu-action-pin">
         <svg class="ui-icon-sm"><use href="#icon-pin"/></svg>
         <span id="menu-action-pin-text">置顶此消息</span>
@@ -1964,6 +2316,14 @@
       <button class="msg-menu-item" id="menu-action-edit" style="display: none;">
         <svg class="ui-icon-sm"><use href="#icon-edit"/></svg>
         <span>编辑消息</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-replace-media" style="display: none;">
+        <svg class="ui-icon-sm"><use href="#icon-edit"/></svg>
+        <span>替换媒体</span>
+      </button>
+      <button class="msg-menu-item" id="menu-action-report" type="button" style="display: none;">
+        <svg class="ui-icon-sm"><use href="#icon-alert"/></svg>
+        <span>举报消息</span>
       </button>
       <button class="msg-menu-item" id="menu-action-select">
         <svg class="ui-icon-sm"><use href="#icon-check"/></svg>
@@ -1975,6 +2335,51 @@
         <span>删除 / 撤回</span>
       </button>
     </div>
+  </div>
+  <input type="file" id="message-media-replace-file" hidden>
+
+  <div class="modal-overlay" id="modal-message-report" style="display: none;" aria-label="举报消息">
+    <section class="modal-window message-report-window" role="dialog" aria-modal="true" aria-labelledby="message-report-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="message-report-title">举报消息</h3>
+        <button class="modal-close" id="btn-message-report-close" type="button" title="关闭" aria-label="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body message-report-body">
+        <p class="modal-desc" id="message-report-description" aria-live="polite"></p>
+        <div class="message-report-choices" id="message-report-choices" role="group" aria-label="举报原因" hidden></div>
+        <label class="form-group" id="message-report-comment-row" hidden>
+          <span class="form-label" id="message-report-comment-label">说明</span>
+          <textarea class="form-textarea" id="message-report-comment" maxlength="1024" rows="4" placeholder="补充举报说明"></textarea>
+        </label>
+        <div class="message-report-status" id="message-report-status" role="status" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-message-report-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="btn-message-report-submit" type="button" hidden>提交举报</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="modal-discussion-group" style="display: none;" aria-label="关联讨论群">
+    <section class="modal-window discussion-group-window" role="dialog" aria-modal="true" aria-labelledby="discussion-group-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="discussion-group-title">关联讨论群</h3>
+        <button class="modal-close" id="btn-discussion-group-close" type="button" title="关闭" aria-label="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body discussion-group-body">
+        <p class="modal-desc" id="discussion-group-current" aria-live="polite">正在读取当前关联…</p>
+        <label class="form-group" for="discussion-group-select">
+          <span class="form-label">可关联的超级群组</span>
+          <select class="form-select" id="discussion-group-select"><option value="">正在加载…</option></select>
+        </label>
+        <div class="discussion-group-status" id="discussion-group-status" role="status" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-discussion-group-cancel" type="button">关闭</button>
+        <button class="btn btn-danger" id="btn-discussion-group-unlink" type="button" hidden>解除关联</button>
+        <button class="btn btn-primary" id="btn-discussion-group-link" type="button" disabled>关联讨论群</button>
+      </div>
+    </section>
   </div>
 
   <!-- Modal: Telegram Message Forwarding Dialog -->
@@ -1999,20 +2404,62 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-scheduled-messages" style="display: none;">
+    <div class="modal-window mi-modal-window scheduled-messages-window" role="dialog" aria-modal="true" aria-labelledby="scheduled-messages-title">
+      <div class="modal-header">
+        <div class="modal-title-wrap"><svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-clock"/></svg><span class="modal-title" id="scheduled-messages-title">计划消息</span></div>
+        <button class="modal-close" type="button" data-scheduled-messages-close title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body scheduled-messages-body">
+        <div class="scheduled-messages-status" role="status" data-scheduled-messages-status>正在加载计划消息…</div>
+        <div class="scheduled-messages-bulk">
+          <label><input type="checkbox" data-scheduled-select-all> 全选</label>
+          <button type="button" class="btn btn-secondary btn-sm" data-scheduled-bulk-send disabled>立即发送所选</button>
+          <button type="button" class="btn btn-danger btn-sm" data-scheduled-bulk-delete disabled>取消所选</button>
+        </div>
+        <div class="scheduled-messages-list" data-scheduled-messages-list></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-quick-replies" style="display: none;">
+    <div class="modal-window mi-modal-window quick-replies-window" role="dialog" aria-modal="true" aria-labelledby="quick-replies-title">
+      <div class="modal-header">
+        <div class="modal-title-wrap"><svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-reply"/></svg><span class="modal-title" id="quick-replies-title">快捷回复</span></div>
+        <button class="modal-close" type="button" data-quick-replies-close title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <div class="modal-body quick-replies-body">
+        <div class="quick-replies-status" role="status" data-quick-replies-status>正在加载快捷回复…</div>
+        <div class="quick-replies-create-toolbar">
+          <button type="button" class="btn btn-secondary btn-sm" data-quick-reply-create-open>新建快捷回复</button>
+        </div>
+        <div class="quick-reply-create-form" data-quick-reply-create-form hidden>
+          <label>快捷名称 <input class="form-input" type="text" maxlength="32" autocomplete="off" data-quick-reply-create-name placeholder="例如：hello"></label>
+          <label>回复内容 <textarea class="form-input" rows="3" maxlength="4096" data-quick-reply-create-text placeholder="输入要保存的文字"></textarea></label>
+          <div class="quick-reply-create-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-quick-reply-create-cancel>取消</button>
+            <button type="button" class="btn btn-primary btn-sm" data-quick-reply-create-save>保存</button>
+          </div>
+        </div>
+        <div class="quick-replies-list" data-quick-replies-list></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Create Poll / Quiz -->
   <div class="modal-overlay" id="modal-create-poll" style="display: none;">
     <div class="modal-window mi-modal-window" style="width: 480px; max-width: 95vw;">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-poll"/></svg>
-          <span class="modal-title">新建原生投票 / 测验</span>
+          <span class="modal-title" id="poll-modal-title">新建原生投票 / 测验</span>
         </div>
         <button class="modal-close" id="btn-close-poll-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
       </div>
       <div class="modal-body" style="padding: 16px;">
         <div class="form-group" style="margin-bottom: 14px;">
           <label class="form-label">投票问题 / 测验题目 <span style="color:var(--color-danger)">*</span></label>
-          <input type="text" class="input-control" id="poll-question-input" placeholder="输入提问内容 (如: 明晚聚餐地点投票？)">
+          <input type="text" class="input-control" id="poll-question-input" maxlength="300" placeholder="输入提问内容 (如: 明晚聚餐地点投票？)">
         </div>
 
         <div class="form-group" style="margin-bottom: 14px;">
@@ -2045,7 +2492,26 @@
 
         <div class="form-group" id="poll-quiz-solution-wrap" style="display: none; margin-top: 14px;">
           <label class="form-label">测验解析说明 (答错或点击灯泡时展示)</label>
-          <input type="text" class="input-control" id="poll-solution-input" placeholder="选填: 如官方标准解析或参考资料链接">
+          <input type="text" class="input-control" id="poll-solution-input" maxlength="200" placeholder="选填: 如官方标准解析或参考资料链接">
+        </div>
+
+        <div class="poll-settings-box" style="margin-top: 14px;">
+          <label class="checkbox-label" style="font-size: 13px;">
+            <input type="checkbox" id="poll-schedule-toggle">
+            <span>定时发布投票</span>
+          </label>
+          <div id="poll-schedule-fields" style="display: none; margin-top: 10px;">
+            <label class="form-label" for="poll-schedule-input">发送日期与时间</label>
+            <input type="datetime-local" class="form-input" id="poll-schedule-input">
+            <label class="form-label" for="poll-repeat-period" style="margin-top: 10px;">重复周期</label>
+            <select class="form-input" id="poll-repeat-period">
+              <option value="0">不重复</option>
+              <option value="86400">每天</option>
+              <option value="604800">每 7 天</option>
+              <option value="2592000">每 30 天</option>
+              <option value="31536000">每 365 天</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -2058,13 +2524,55 @@
     </div>
   </div>
 
+  <div class="poll-voters-overlay" id="poll-voters-modal" hidden>
+    <div class="poll-voters-dialog" role="dialog" aria-modal="true" aria-labelledby="poll-voters-title">
+      <div class="poll-voters-head">
+        <strong id="poll-voters-title" data-poll-voters-title>投票者</strong>
+        <button type="button" class="btn-icon-subtle" data-poll-voters-close aria-label="关闭投票者列表">×</button>
+      </div>
+      <div class="poll-voters-list" data-poll-voters-list></div>
+      <div class="poll-voters-footer">
+        <span role="status" data-poll-voters-status></span>
+        <button type="button" class="btn btn-secondary btn-xs" data-poll-voters-more hidden>加载更多</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="poll-voters-overlay" id="message-reactions-modal" hidden>
+    <div class="poll-voters-dialog" role="dialog" aria-modal="true" aria-labelledby="message-reactions-title">
+      <div class="poll-voters-head">
+        <strong id="message-reactions-title" data-message-reactions-title>消息反应</strong>
+        <button type="button" class="btn-icon-subtle" data-message-reactions-close aria-label="关闭反应列表">×</button>
+      </div>
+      <div class="poll-voters-list" data-message-reactions-list></div>
+      <div class="poll-voters-footer">
+        <span role="status" data-message-reactions-status></span>
+        <button type="button" class="btn btn-secondary btn-xs" data-message-reactions-more hidden>加载更多</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="poll-voters-overlay" id="message-read-participants-modal" hidden>
+    <div class="poll-voters-dialog" role="dialog" aria-modal="true" aria-labelledby="message-read-participants-title">
+      <div class="poll-voters-head">
+        <strong id="message-read-participants-title" data-message-read-participants-title>已读成员</strong>
+        <button type="button" class="btn-icon-subtle" data-message-read-participants-close aria-label="关闭已读成员列表">×</button>
+      </div>
+      <div class="poll-voters-list" data-message-read-participants-list></div>
+      <div class="poll-voters-footer">
+        <span role="status" data-message-read-participants-status></span>
+        <button type="button" class="btn btn-secondary btn-xs" data-message-read-participants-retry hidden>重试</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Chat Wallpaper & Theme Switcher -->
   <div class="modal-overlay" id="modal-chat-theme" style="display: none;">
     <div class="modal-window mi-modal-window" style="width: 440px; max-width: 92vw;">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-palette"/></svg>
-          <span class="modal-title">聊天壁纸与视觉风格</span>
+          <span class="modal-title">聊天外观</span>
         </div>
         <button class="modal-close" id="btn-close-theme-modal" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
       </div>
@@ -2080,8 +2588,8 @@
           <div class="theme-card" data-theme="doodle">
             <div class="theme-preview theme-preview-doodle"></div>
             <div class="theme-meta">
-              <span class="theme-name">TG经典涂鸦 (Doodle)</span>
-              <span class="theme-desc">Telegram官方矢量图腾纹理</span>
+                <span class="theme-name">经典涂鸦 (Doodle)</span>
+                <span class="theme-desc">深色底纹与轻量图案</span>
             </div>
           </div>
           <div class="theme-card" data-theme="neon">
@@ -2099,6 +2607,24 @@
             </div>
           </div>
         </div>
+        <section class="telegram-chat-theme-section" aria-labelledby="telegram-chat-theme-title">
+          <h3 id="telegram-chat-theme-title">Telegram 会话主题</h3>
+          <p>仅适用于私聊。选择后由 Telegram 保存，并同步到其他设备。</p>
+          <div id="telegram-chat-theme-status" role="status">打开私聊以读取 Telegram 主题。</div>
+          <div id="telegram-chat-theme-options" class="telegram-chat-theme-options"></div>
+        </section>
+        <section class="telegram-chat-wallpaper-section" aria-labelledby="telegram-chat-wallpaper-title">
+          <h3 id="telegram-chat-wallpaper-title">Telegram 聊天壁纸</h3>
+          <p>从 Telegram 壁纸目录选择；更改同步到当前账号的其他设备。</p>
+          <div id="telegram-chat-wallpaper-status" role="status">打开私聊、群组或频道以读取壁纸。</div>
+          <label class="telegram-chat-wallpaper-for-both"><input id="telegram-chat-wallpaper-for-both" type="checkbox"> 同时为你和私聊对象设置所选壁纸</label>
+          <div class="telegram-chat-wallpaper-controls">
+            <label><input id="telegram-chat-wallpaper-blur" type="checkbox"> 模糊背景</label>
+            <label><input id="telegram-chat-wallpaper-motion" type="checkbox"> 动态效果</label>
+            <label class="telegram-chat-wallpaper-intensity">图案强度 <input id="telegram-chat-wallpaper-intensity" type="range" min="-100" max="100" step="1" value="50"><output id="telegram-chat-wallpaper-intensity-value">50</output></label>
+          </div>
+          <div id="telegram-chat-wallpaper-options" class="telegram-chat-wallpaper-options"></div>
+        </section>
       </div>
     </div>
   </div>
@@ -2133,13 +2659,337 @@
     </div>
   </div>
 
+  <!-- Modal: Share Contact -->
+  <div class="modal-overlay" id="modal-contact-share" style="display: none;">
+    <div class="modal-window mi-modal-window" style="width: 420px; max-width: 92vw;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="ui-icon" style="color: var(--color-primary);"><use href="#icon-user"/></svg>
+          <span class="modal-title">分享联系人</span>
+        </div>
+        <button class="modal-close" id="btn-close-contact-share" title="关闭"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      </div>
+      <form id="form-contact-share">
+        <div class="modal-body" style="padding: 16px;">
+          <p class="modal-desc">联系人信息将作为 Telegram 联系人卡片发送到当前会话。</p>
+          <button class="btn btn-secondary btn-sm" type="button" id="btn-load-share-contacts">从 Telegram 联系人中选择</button>
+          <div class="contact-share-picker" id="contact-share-picker" hidden>
+            <input class="form-input" id="contact-share-search" type="search" maxlength="80" placeholder="搜索姓名或电话号码" aria-label="搜索 Telegram 联系人">
+            <div class="contact-share-picker-status" id="contact-share-picker-status" role="status"></div>
+            <div class="contact-share-picker-list" id="contact-share-picker-list"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-share-first">名字 *</label>
+            <input class="form-input" id="contact-share-first" maxlength="64" autocomplete="given-name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-share-last">姓氏</label>
+            <input class="form-input" id="contact-share-last" maxlength="64" autocomplete="family-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-share-phone">电话号码 *</label>
+            <input class="form-input" id="contact-share-phone" type="tel" maxlength="32" autocomplete="tel" placeholder="+1 555 123 4567" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" id="btn-cancel-contact-share">取消</button>
+          <button class="btn btn-primary" type="submit" id="btn-submit-contact-share">发送联系人</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Group Admin Rights -->
+  <div class="modal-overlay" id="modal-group-info" style="display: none;">
+    <div class="modal-window" style="width: 560px; max-width: 94vw;">
+      <div class="modal-header">
+        <h3 class="modal-title">编辑群组资料</h3>
+        <button class="modal-close" type="button" id="btn-close-group-info" aria-label="关闭">×</button>
+      </div>
+      <form id="form-group-info">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="group-info-title">名称</label>
+            <input class="form-input" id="group-info-title" type="text" maxlength="128" required>
+          </div>
+          <div class="form-group" id="group-info-username-row" hidden>
+            <label class="form-label" for="group-info-username">公开用户名</label>
+            <input class="form-input" id="group-info-username" type="text" maxlength="32" autocomplete="off" placeholder="username">
+            <p class="modal-desc">留空可将公开群组或频道改为私有；用户名必须至少 5 个字符，是否可用由 Telegram 最终确认。</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="group-info-description">简介</label>
+            <textarea class="form-input" id="group-info-description" rows="4" maxlength="255"></textarea>
+            <p class="modal-desc">清空简介会移除当前说明。Telegram 会检查此账号是否有权修改群组资料。</p>
+          </div>
+          <div class="empty-hint" id="group-info-status" role="status"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" id="btn-cancel-group-info">取消</button>
+          <button class="btn btn-primary" type="submit" id="btn-save-group-info">保存资料</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-chat-permissions" style="display: none;">
+    <div class="modal-window" style="width: 760px; max-width: 94vw; max-height: 90dvh; overflow:auto;">
+      <div class="modal-header">
+        <h3 class="modal-title">默认成员权限</h3>
+        <button class="modal-close" type="button" id="btn-close-chat-permissions" aria-label="关闭">×</button>
+      </div>
+      <form id="form-chat-permissions">
+        <div class="modal-body">
+          <p class="modal-desc">勾选的项目会对普通成员设为禁止。管理员权限和 Telegram 的额外限制仍由 Telegram 管理。</p>
+          <div class="chat-permissions-grid">
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="viewMessages"><span>查看消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendMessages"><span>发送文字消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendPlain"><span>发送纯文本</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendMedia"><span>发送全部媒体</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendPhotos"><span>发送照片</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendVideos"><span>发送视频</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendRoundvideos"><span>发送视频消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendAudios"><span>发送音乐</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendVoices"><span>发送语音</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendDocs"><span>发送文件</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendStickers"><span>发送贴纸</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendGifs"><span>发送 GIF</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendGames"><span>发送游戏</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendInline"><span>使用内联机器人</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="embedLinks"><span>嵌入链接预览</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="sendPolls"><span>发送投票</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="changeInfo"><span>更改群组资料</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="inviteUsers"><span>邀请成员</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="pinMessages"><span>置顶消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-chat-right="manageTopics"><span>管理话题</span></label>
+          </div>
+          <section class="chat-permissions-advanced" id="supergroup-advanced-settings" hidden>
+            <h4>超级群选项</h4>
+            <div class="chat-permissions-grid">
+              <label class="checkbox-label"><input type="checkbox" data-supergroup-setting="joinToSend"><span>仅群成员可发送消息</span></label>
+              <label class="checkbox-label"><input type="checkbox" data-supergroup-setting="joinRequest"><span>新成员需管理员批准</span></label>
+              <label class="checkbox-label"><input type="checkbox" data-supergroup-setting="antiSpam"><span>Telegram 反垃圾保护</span></label>
+              <label class="checkbox-label"><input type="checkbox" data-supergroup-setting="participantsHidden"><span>隐藏成员列表</span></label>
+            </div>
+          </section>
+          <div class="form-group" id="chat-slow-mode-row" hidden>
+            <label class="form-label" for="chat-slow-mode">慢速模式</label>
+            <select class="form-input" id="chat-slow-mode">
+              <option value="0">关闭</option><option value="10">10 秒</option><option value="30">30 秒</option>
+              <option value="60">1 分钟</option><option value="300">5 分钟</option><option value="900">15 分钟</option><option value="3600">1 小时</option>
+            </select>
+          </div>
+          <div class="empty-hint" id="chat-permissions-status" role="status"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" id="btn-cancel-chat-permissions">取消</button>
+          <button class="btn btn-primary" type="submit" id="btn-save-chat-permissions">保存权限</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Group Admin Rights -->
+  <div class="modal-overlay" id="modal-admin-rights" style="display: none;">
+    <div class="modal-window" style="width: 620px; max-width: 94vw;">
+      <div class="modal-header">
+        <h3 class="modal-title">管理员权限</h3>
+        <button class="modal-close" type="button" id="btn-close-admin-rights" aria-label="关闭">×</button>
+      </div>
+      <form id="form-admin-rights">
+        <div class="modal-body">
+          <p class="modal-desc" id="admin-rights-target">为成员选择管理员权限。Telegram 会再次校验当前账号是否有权执行此操作。</p>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;">
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="changeInfo"><span>更改群组资料</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="inviteUsers"><span>邀请用户</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="deleteMessages"><span>删除消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="banUsers"><span>限制成员</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="pinMessages"><span>置顶消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="manageTopics"><span>管理话题</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="manageCall"><span>管理语音聊天</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="addAdmins"><span>添加管理员</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="postMessages"><span>发布频道消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="editMessages"><span>编辑频道消息</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="anonymous"><span>匿名管理员</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="postStories"><span>发布动态</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="editStories"><span>编辑动态</span></label>
+            <label class="checkbox-label"><input type="checkbox" data-admin-perm="deleteStories"><span>删除动态</span></label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" id="btn-cancel-admin-rights">取消</button>
+          <button class="btn btn-danger" type="button" id="btn-demote-admin-rights" hidden>撤销管理员</button>
+          <button class="btn btn-primary" type="submit" id="btn-save-admin-rights">保存权限</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Telegram Join Requests -->
+  <div class="modal-overlay" id="modal-join-requests" style="display: none;">
+    <div class="modal-window join-requests-window" role="dialog" aria-modal="true" aria-labelledby="join-requests-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="join-requests-title">入群申请</h3>
+        <button class="modal-close" type="button" id="btn-close-join-requests" aria-label="关闭">×</button>
+      </div>
+      <div class="join-requests-toolbar">
+        <input class="form-input" id="join-request-search" type="search" maxlength="128" placeholder="搜索申请人或简介" aria-label="搜索入群申请">
+        <button class="btn btn-primary btn-xs" type="button" id="btn-approve-all-join-requests">批准全部</button>
+        <button class="btn btn-danger btn-xs" type="button" id="btn-reject-all-join-requests">拒绝全部</button>
+      </div>
+      <div class="join-requests-status" id="join-requests-status" role="status"></div>
+      <div class="join-requests-list" id="join-requests-list"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-join-requests">关闭</button>
+        <button class="btn btn-secondary" type="button" id="btn-more-join-requests" hidden>加载更多</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Telegram Banned Members -->
+  <div class="modal-overlay" id="modal-banned-members" style="display: none;">
+    <div class="modal-window join-requests-window" role="dialog" aria-modal="true" aria-labelledby="banned-members-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="banned-members-title">封禁用户</h3>
+        <button class="modal-close" type="button" id="btn-close-banned-members" aria-label="关闭">×</button>
+      </div>
+      <div class="join-requests-toolbar">
+        <input class="form-input" id="banned-member-search" type="search" maxlength="128" placeholder="搜索被封禁的用户" aria-label="搜索被封禁用户">
+      </div>
+      <div class="join-requests-status" id="banned-members-status" role="status"></div>
+      <div class="join-requests-list" id="banned-members-list"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-banned-members">关闭</button>
+        <button class="btn btn-secondary" type="button" id="btn-more-banned-members" hidden>加载更多</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Telegram Group Invite Links -->
+  <div class="modal-overlay" id="modal-invite-links" style="display: none;">
+    <div class="modal-window join-requests-window" role="dialog" aria-modal="true" aria-labelledby="invite-links-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="invite-links-title">群组邀请链接</h3>
+        <button class="modal-close" type="button" id="btn-close-invite-links" aria-label="关闭">×</button>
+      </div>
+      <div class="join-requests-toolbar invite-links-form">
+        <input class="form-input" id="invite-link-title" type="text" maxlength="32" placeholder="链接名称（可选）" aria-label="邀请链接名称">
+        <select class="form-input" id="invite-link-expiry" aria-label="邀请链接有效期">
+          <option value="0">永久有效</option><option value="86400">1 天</option><option value="604800">7 天</option><option value="2592000">30 天</option>
+        </select>
+        <input class="form-input" id="invite-link-limit" type="number" min="1" max="99999" step="1" placeholder="人数上限（可选）" aria-label="邀请链接人数上限">
+        <label class="checkbox-label"><input id="invite-link-request-needed" type="checkbox"><span>加入前需管理员批准</span></label>
+        <button class="btn btn-primary btn-xs" type="button" id="btn-create-invite-link">创建链接</button>
+      </div>
+      <div class="join-requests-status" id="invite-links-status" role="status"></div>
+      <div class="join-requests-list" id="invite-links-list"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-invite-links">关闭</button>
+        <button class="btn btn-secondary" type="button" id="btn-more-invite-links" hidden>加载更多</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Telegram group members -->
+  <div class="modal-overlay" id="modal-add-group-members" style="display: none;">
+    <div class="modal-window join-requests-window" role="dialog" aria-modal="true" aria-labelledby="group-invite-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="group-invite-title">添加群成员</h3>
+        <button class="modal-close" type="button" id="btn-close-group-invite" aria-label="关闭">×</button>
+      </div>
+      <div class="join-requests-toolbar">
+        <input class="form-input" id="group-invite-search" type="search" maxlength="128" placeholder="按姓名或用户名搜索 Telegram 用户" aria-label="搜索要邀请的 Telegram 用户">
+      </div>
+      <div class="join-requests-status" id="group-invite-status" role="status" aria-live="polite">输入至少一个字符以搜索 Telegram 用户。</div>
+      <div class="join-requests-list" id="group-invite-list"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-group-invite">取消</button>
+        <button class="btn btn-primary" type="button" id="btn-add-selected-group-members" disabled>添加所选成员</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Telegram member mute duration -->
+  <div class="modal-overlay" id="modal-group-member-mute" style="display: none;">
+    <form class="modal-window" id="form-group-member-mute" role="dialog" aria-modal="true" aria-labelledby="group-member-mute-title" style="width:min(440px,94vw);">
+      <div class="modal-header">
+        <h3 class="modal-title" id="group-member-mute-title">限制成员发言</h3>
+        <button class="modal-close" type="button" id="btn-close-group-member-mute" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" id="group-member-mute-target"></p>
+        <label class="form-label" for="group-member-mute-duration">时长</label>
+        <select class="form-input" id="group-member-mute-duration">
+          <option value="3600">1 小时</option><option value="28800">8 小时</option><option value="86400">1 天</option>
+          <option value="604800">1 周</option><option value="2592000">30 天</option><option value="31536000">1 年</option>
+          <option value="0">永久</option>
+        </select>
+        <div class="empty-hint" id="group-member-mute-status" role="status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-group-member-mute">取消</button>
+        <button class="btn btn-primary" type="submit" id="btn-save-group-member-mute">限制发言</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Create Telegram group or channel -->
+  <div class="modal-overlay" id="modal-create-chat" style="display: none;">
+    <form class="modal-window join-requests-window" id="form-create-chat" role="dialog" aria-modal="true" aria-labelledby="create-chat-title">
+      <div class="modal-header">
+        <h3 class="modal-title" id="create-chat-title">新建群组或频道</h3>
+        <button class="modal-close" type="button" id="btn-close-create-chat" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body create-chat-form-body">
+        <label class="form-label" for="create-chat-type">类型</label>
+        <select class="form-input" id="create-chat-type">
+          <option value="group">群组</option><option value="supergroup">超级群</option><option value="channel">广播频道</option>
+        </select>
+        <label class="form-label" for="create-chat-name">名称</label>
+        <input class="form-input" id="create-chat-name" type="text" maxlength="128" required autocomplete="off">
+        <div id="create-chat-about-wrap" hidden>
+          <label class="form-label" for="create-chat-about">简介</label>
+          <textarea class="form-input" id="create-chat-about" maxlength="255" rows="2"></textarea>
+        </div>
+        <label class="checkbox-label" id="create-chat-forum-wrap" hidden><input type="checkbox" id="create-chat-forum"><span>启用论坛话题</span></label>
+        <section id="create-chat-members-wrap">
+          <p class="modal-desc">搜索并选择群组初始成员（至少 1 位，最多 50 位）。</p>
+          <input class="form-input" id="create-chat-member-search" type="search" maxlength="128" placeholder="搜索 Telegram 用户" aria-label="搜索群组初始成员">
+          <div class="join-requests-status" id="create-chat-member-status" role="status">输入至少一个字符以搜索 Telegram 用户。</div>
+          <div class="create-chat-member-list" id="create-chat-member-list"></div>
+        </section>
+        <div class="join-requests-status" id="create-chat-status" role="status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-create-chat">取消</button>
+        <button class="btn btn-primary" type="submit" id="btn-submit-create-chat">创建</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <script src="js/theme.js"></script>
   <script src="js/plugin-config-form.js"></script>
-  <script src="js/settings.js"></script>
+  <script src="js/settings.js?v=39"></script>
   <script src="js/profile-panel.js"></script>
-  <script src="app.js?v=15"></script>
+  <script src="js/dialog-folders.js?v=6"></script>
+  <script src="js/chat-notifications.js"></script>
+  <script src="js/cloud-drafts.js"></script>
+  <script src="js/visual-viewport.js"></script>
+  <script src="js/mini-app.js?v=20"></script>
+  <script src="js/bot-keyboard.js?v=14"></script>
+  <script src="js/chat-ws.js?v=7"></script>
+  <script src="js/comments.js?v=1"></script>
+  <script src="js/pinned-messages.js?v=1"></script>
+  <script src="js/forum-topics.js?v=14"></script>
+  <script src="app.js?v=140"></script>
+  <script src="js/global-message-search.js?v=2"></script>
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js', { scope: './' }).catch(() => {});
+    });
+  </script>
 </body>
 </html>

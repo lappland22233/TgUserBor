@@ -8,6 +8,7 @@ import { handleApiRoute } from './api';
 import { checkIntranetAccess } from './ip-filter';
 import { CacheManager } from './cache-manager';
 import { ChatWSGateway } from './ws-chat';
+import { isAllowedRequestOrigin } from './request-origin';
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -90,6 +91,14 @@ export class GUIServer {
 
         const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
+        // IP restrictions alone do not stop another website from sending a
+        // browser request to a locally accessible control API.
+        if (url.pathname.startsWith('/api/') && !isAllowedRequestOrigin(req, trustProxy)) {
+          res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end('Forbidden: request origin does not match this server.');
+          return;
+        }
+
         // 1. SSE Stream
         if (url.pathname === '/api/events') {
           this.sse.addClient(res);
@@ -106,12 +115,22 @@ export class GUIServer {
         this.serveStatic(req, res, url.pathname);
       });
 
+      // Large file bodies may legitimately take longer than Node's default
+      // five-minute request timeout, especially on a slow local network.
+      this.server.requestTimeout = 2 * 60 * 60_000;
+
       // WebSocket Upgrade: 支持最大双 WS 架构 (/ws/chat-stream 和 /ws/chat-rpc)
       this.server.on('upgrade', (req, socket, head) => {
         const allowLan = process.env.GUI_ALLOW_LAN !== 'false';
         const trustProxy = process.env.GUI_TRUST_PROXY === 'true';
         const access = checkIntranetAccess(req, { allowPrivateNetwork: allowLan, trustProxy });
         if (!access.allowed) {
+          socket.destroy();
+          return;
+        }
+
+        if (!isAllowedRequestOrigin(req, trustProxy)) {
+          socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
           socket.destroy();
           return;
         }
