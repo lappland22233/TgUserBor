@@ -373,6 +373,70 @@ function initManagedImages() {
 }
 
 
+// Autoplay media can otherwise start dozens of parallel range requests as the
+// message list is built. Play one visible item at a time; a tap selects another.
+function initManagedAutoplay() {
+  const selector = 'video[data-network-autoplay]';
+  const visible = new Set();
+  let active = null;
+  const stop = video => {
+    if (!video) return;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  };
+  const activate = video => {
+    if (active === video || !video?.isConnected) return;
+    stop(active);
+    active = video;
+    video.src = video.dataset.networkAutoplay;
+    video.play().catch(() => {});
+  };
+  const next = () => {
+    if (active) return;
+    for (const video of visible) {
+      if (video.isConnected) { activate(video); return; }
+    }
+  };
+  const intersection = 'IntersectionObserver' in window
+    ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else {
+            visible.delete(entry.target);
+            if (active === entry.target) { stop(active); active = null; }
+          }
+        }
+        next();
+      })
+    : null;
+  const visit = (node, callback) => {
+    if (node.nodeType !== 1) return;
+    if (node.matches(selector)) callback(node);
+    node.querySelectorAll(selector).forEach(callback);
+  };
+  const observe = video => {
+    video.addEventListener('pointerdown', () => { if (visible.has(video)) activate(video); });
+    if (intersection) intersection.observe(video);
+    else { visible.add(video); next(); }
+  };
+  visit(document.body, observe);
+  new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) visit(node, observe);
+      for (const node of record.removedNodes) {
+        if (node.isConnected) continue;
+        visit(node, video => {
+          if (intersection) intersection.unobserve(video);
+          visible.delete(video);
+          if (active === video) { stop(active); active = null; }
+        });
+      }
+    }
+    next();
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
 // Telegram / Twemoji Vector SVG Emojis (No System Fonts)
 function getEmojiHex(emoji) {
   const cleaned = emoji.replace(/[\ufe0e\ufe0f]/g, '');
@@ -4152,7 +4216,8 @@ function renderAnimationMedia(media, url) {
   if (String(media.mimeType || '').toLowerCase() === 'image/gif') {
     return `<div class="msg-media-wrap video"><img class="msg-media-animation" data-network-src="${safeUrl}" alt="动图" loading="lazy"></div>`;
   }
-  return `<div class="msg-media-wrap video"><video class="msg-media-animation" src="${safeUrl}" autoplay loop muted playsinline controls aria-label="动图">当前浏览器不支持播放此动图</video></div>`;
+  const posterUrl = `${url}${url.includes('?') ? '&' : '?'}thumb=1`;
+  return `<div class="msg-media-wrap video"><video class="msg-media-animation" data-network-autoplay="${safeUrl}" data-network-poster="${escapeHtml(posterUrl)}" loop muted playsinline controls aria-label="动图">当前浏览器不支持播放此动图</video></div>`;
 }
 
 function renderTelegramVideoMedia(media, instId, chatId, messageId, senderName, timeStr) {
@@ -4240,7 +4305,7 @@ function renderPaidMediaItems(media, instId, chatId, messageId, senderName) {
     if (item.type === 'photo') return `<div class="msg-media-wrap photo"><img class="msg-media-photo" data-network-src="${escapeHtml(thumbUrl)}" alt="付费照片 ${index + 1}" loading="lazy" onclick="openLightbox(${inlineJsArg(url)}, ${inlineJsArg(senderName)})"></div>`;
     if (item.type === 'video') return `<video class="paid-media-video" controls preload="none" playsinline data-network-poster="${escapeHtml(thumbUrl)}" src="${escapeHtml(url)}" aria-label="付费视频 ${index + 1}"></video>`;
     if (item.type === 'animation') return renderAnimationMedia(item, url);
-    if (item.type === 'audio' || item.type === 'voice') return `<audio class="paid-media-audio" controls preload="metadata" src="${escapeHtml(url)}"></audio>`;
+    if (item.type === 'audio' || item.type === 'voice') return `<audio class="paid-media-audio" controls preload="none" src="${escapeHtml(url)}"></audio>`;
     const filename = item.fileName || `付费媒体 ${index + 1}`;
     return `<a class="btn btn-secondary btn-sm paid-media-file" href="${escapeHtml(url)}&download=1" download="${escapeHtml(filename)}">下载 ${escapeHtml(filename)}</a>`;
   }).join('');
@@ -4776,7 +4841,7 @@ function renderClientMessages(preserveScroll = false) {
           const videoUrl = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}`;
           mediaHtml = `
             <div class="msg-media-wrap sticker sticker-bubble" data-set-id="${escapeHtml(setId)}" data-access-hash="${escapeHtml(accessHash)}" data-short-name="${escapeHtml(shortName)}" title="点击查看与安装此贴纸包">
-              <video class="msg-media-sticker video-sticker" src="${escapeHtml(videoUrl)}" autoplay loop muted playsinline disablePictureInPicture></video>
+              <video class="msg-media-sticker video-sticker" data-network-autoplay="${escapeHtml(videoUrl)}" data-network-poster="${escapeHtml(videoUrl + '&thumb=1')}" loop muted playsinline disablePictureInPicture></video>
             </div>
           `;
         } else {
@@ -16606,6 +16671,7 @@ window.onload = async () => {
   if (window.ProfilePanel) window.ProfilePanel.init();
   initListeners();
   initManagedImages();
+  initManagedAutoplay();
   initSSE();
   initSavedMessageTags();
   initChatTranslationToggle();
