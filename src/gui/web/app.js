@@ -12288,7 +12288,7 @@ function initChatDragAndDrop() {
       };
     });
     document.addEventListener('click', event => {
-      if (!dicePicker.hidden && !dicePicker.contains(event.target) && event.target !== diceButton) closeDicePicker();
+      if (!dicePicker.hidden && !dicePicker.contains(event.target) && !diceButton.contains(event.target)) closeDicePicker();
     });
     dicePicker.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.preventDefault(); closeDicePicker(); diceButton.focus(); }
@@ -12324,6 +12324,10 @@ function initChatContextMenu() {
   if (btnMore) {
     btnMore.onclick = toggleMenu;
   }
+
+  menu.querySelector?.('.chat-extra-actions')?.addEventListener('click', (event) => {
+    if (event.target?.closest?.('button')) menu.style.display = 'none';
+  });
 
   const captureChatTarget = () => {
     const instId = state.clientSelectedInstance;
