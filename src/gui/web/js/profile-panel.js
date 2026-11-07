@@ -41,7 +41,7 @@
     try {
       const res = await api(`/api/instances/${instId}/account/peer-profile?chatId=${chatId}`);
       const p = res.profile || res;
-      const avatarUrl = `/api/instances/${instId}/account/avatar?chatId=${chatId}`;
+      const avatarUrl = `/api/instances/${encodeURIComponent(instId)}/account/avatar?chatId=${encodeURIComponent(chatId)}`;
 
       pane.innerHTML = `
         <div class="profile-pane-header">
@@ -50,11 +50,11 @@
           </button>
         </div>
         <div class="profile-pane-avatar">
-          <img src="${avatarUrl}" alt="" onerror="this.style.display='none'">
+          <img src="${escapeHtml(avatarUrl)}" alt="" onerror="this.style.display='none'">
         </div>
         <div class="profile-pane-name">${escapeHtml(p.firstName || p.title || '未知')}</div>
         <div class="profile-pane-username">${p.username ? '@' + escapeHtml(p.username) : ''}</div>
-        <div class="profile-pane-id">ID: ${p.id || chatId}</div>
+        <div class="profile-pane-id">ID: ${escapeHtml(p.id || chatId)}</div>
         ${p.bio || p.about ? `<div class="profile-pane-bio">${escapeHtml(p.bio || p.about)}</div>` : ''}
         <div class="profile-pane-tabs">
           <button class="profile-tab active">媒体</button>
@@ -86,8 +86,8 @@
       }
 
       grid.innerHTML = media.map((m) => {
-        const url = `/api/instances/${instId}/account/media?chatId=${chatId}&messageId=${m.id}&thumb=1`;
-        return `<div class="profile-media-item"><img src="${url}" loading="lazy" alt=""></div>`;
+        const url = `/api/instances/${encodeURIComponent(instId)}/account/media?chatId=${encodeURIComponent(chatId)}&messageId=${encodeURIComponent(m.id)}&thumb=1`;
+        return `<div class="profile-media-item"><img src="${escapeHtml(url)}" loading="lazy" alt=""></div>`;
       }).join('');
     } catch (_) {
       const grid = document.getElementById('profile-media-grid');

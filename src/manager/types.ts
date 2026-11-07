@@ -5,6 +5,7 @@ export type InstanceStatus =
   | 'STOPPED'
   | 'STARTING'
   | 'NEEDS_PHONE'
+  | 'NEEDS_QR'
   | 'NEEDS_CODE'
   | 'NEEDS_PASSWORD'
   | 'ONLINE'
@@ -50,6 +51,7 @@ export interface InstanceInfo {
 export type IPCToParent =
   | { type: 'STATUS_CHANGE'; status: InstanceStatus; error?: string }
   | { type: 'AUTH_REQUIRED'; step: 'phone' | 'code' | 'password'; hint?: string }
+  | { type: 'AUTH_QR'; token: string; expires: number }
   | { type: 'AUTH_SUCCESS'; self: UserRef }
   | { type: 'METRICS'; data: Partial<InstanceMetrics> }
   | { type: 'LOG_EVENT'; level: string; msg: string; time: number; context?: any }
@@ -61,6 +63,7 @@ export type IPCToChild =
   | { type: 'START' }
   | { type: 'STOP' }
   | { type: 'AUTH_INPUT'; step: 'phone' | 'code' | 'password'; value: string }
+  | { type: 'AUTH_QR_START' }
   | { type: 'PLUGIN_ACTION'; actionId: string; action: 'enable' | 'disable' | 'reload'; pluginName: string }
   | { type: 'ACCOUNT_ACTION'; actionId: string; action: string; payload?: any };
 

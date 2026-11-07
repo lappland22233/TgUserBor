@@ -14,10 +14,10 @@
     }
 
     const defaults = buildDefaults(schema);
-    const merged = Object.assign({}, defaults, values || {});
+    const merged = Object.assign(Object.create(null), defaults, values || {});
 
     // Group fields by `group` (ungrouped → "通用")
-    const groups = {};
+    const groups = Object.create(null);
     for (const f of schema) {
       const g = f.group || '通用';
       if (!groups[g]) groups[g] = [];
@@ -46,9 +46,9 @@
   }
 
   function renderField(field, value) {
-    const id = `pcf-${field.key}`;
+    const id = esc(`pcf-${field.key}`);
     const desc = field.description ? `<div class="pcf-desc">${esc(field.description)}</div>` : '';
-    const err = `<div class="pcf-error" id="pcf-err-${field.key}" style="display:none;"></div>`;
+    const err = `<div class="pcf-error" id="${esc(`pcf-err-${field.key}`)}" style="display:none;"></div>`;
     let control = '';
 
     switch (field.type) {
@@ -66,8 +66,8 @@
           <label class="pcf-label" for="${id}">${esc(field.label)}</label>
           <input type="number" class="form-input" id="${id}" data-key="${esc(field.key)}"
             value="${value != null ? esc(String(value)) : ''}"
-            ${field.min != null ? `min="${field.min}"` : ''}
-            ${field.max != null ? `max="${field.max}"` : ''}
+            ${field.min != null ? `min="${esc(field.min)}"` : ''}
+            ${field.max != null ? `max="${esc(field.max)}"` : ''}
             ${field.placeholder ? `placeholder="${esc(field.placeholder)}"` : ''}>`;
         break;
 
@@ -126,9 +126,9 @@
 
   /** Extract form values as a plain object. */
   function toJSON(container, schema) {
-    const result = {};
+    const result = Object.create(null);
     for (const field of schema) {
-      const wrap = container.querySelector(`.plugin-config-field[data-key="${field.key}"]`);
+      const wrap = findField(container, field.key);
       if (!wrap) continue;
 
       if (field.type === 'boolean') {
@@ -156,7 +156,7 @@
   function validate(container, schema) {
     let ok = true;
     for (const field of schema) {
-      const wrap = container.querySelector(`.plugin-config-field[data-key="${field.key}"]`);
+      const wrap = findField(container, field.key);
       if (wrap && !validateField(wrap, field)) ok = false;
     }
     return ok;
@@ -205,7 +205,7 @@
 
   /** Build default values from schema. */
   function buildDefaults(schema) {
-    const d = {};
+    const d = Object.create(null);
     for (const f of schema) {
       if (f.default !== undefined) d[f.key] = f.default;
     }
@@ -216,7 +216,7 @@
   function resetToDefaults(container, schema) {
     if (!schema) return;
     for (const field of schema) {
-      const wrap = container.querySelector(`.plugin-config-field[data-key="${field.key}"]`);
+      const wrap = findField(container, field.key);
       if (!wrap) continue;
       const v = field.default;
 
@@ -241,6 +241,11 @@
 
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function findField(container, key) {
+    return Array.from(container.querySelectorAll('.plugin-config-field'))
+      .find((field) => field.dataset.key === String(key));
   }
 
   // Expose globally
