@@ -3,7 +3,7 @@
 // Topic view is kept separate from the parent chat composer and drafts.
 window.ForumTopics = (() => {
   let modal, title, status, list, more, back, composer, input, send, replyLabel, attachButton, fileInput, stickerButton, stickerPanel, stickerSearch, stickerPacks, stickerGrid, stickerStatus, gifButton, gifPanel, gifGrid, gifStatus;
-  let context = null, selectedDialog = null, sequence = 0, busy = false, sending = false, mutating = false, cursor = null, messageOffset = null, replyTo = null, topicRefreshTimer = null;
+  let context = null, selectedDialog = null, sequence = 0, busy = false, sending = false, mutating = false, cursor = null, messageOffset = null, replyTo = null, topicRefreshTimer = null, activeHistoryLoad = null;
   let topicIds = new Set(), messageIds = new Set();
   let stickerCache = { instId: null, packs: null, details: new Map() }, gifCache = { instId: null, gifs: null }, selectedStickerPack = null;
 
@@ -13,6 +13,7 @@ window.ForumTopics = (() => {
   }
   function close() {
     sequence++; context = null; busy = false; sending = false; mutating = false; cursor = null; messageOffset = null; replyTo = null;
+    activeHistoryLoad = null;
     if (topicRefreshTimer) { clearTimeout(topicRefreshTimer); topicRefreshTimer = null; }
     if (modal) modal.hidden = true;
     if (stickerPanel) stickerPanel.hidden = true;
@@ -74,7 +75,7 @@ window.ForumTopics = (() => {
   }
   function showTopics() {
     if (!valid()) { close(); return; }
-    sequence++; busy = false; sending = false; mutating = false; send.disabled = false; context.topic = null; cursor = null; topicIds = new Set(); replyTo = null;
+    sequence++; busy = false; sending = false; mutating = false; send.disabled = false; context.topic = null; cursor = null; topicIds = new Set(); replyTo = null; activeHistoryLoad = null;
     list.replaceChildren(); title.textContent = '话题'; back.hidden = true; composer.hidden = true; replyLabel.hidden = true; more.hidden = true;
     const createButton = modal.querySelector('[data-create]'); if (createButton) createButton.hidden = false;
     status.textContent = '新建、改名、置顶及关闭操作需要相应的管理员权限。';
@@ -128,7 +129,7 @@ window.ForumTopics = (() => {
   }
   function openTopic(topic) {
     if (!valid()) { close(); return; }
-    sequence++; busy = false; sending = false; mutating = false; send.disabled = false; context.topic = topic; messageOffset = null; messageIds = new Set(); replyTo = null;
+    sequence++; busy = false; sending = false; mutating = false; send.disabled = false; context.topic = topic; messageOffset = null; messageIds = new Set(); replyTo = null; activeHistoryLoad = null;
     list.replaceChildren(); title.textContent = topic.title || '话题'; back.hidden = false; composer.hidden = Boolean(topic.closed); replyLabel.hidden = true; input.value = ''; more.hidden = true; if (stickerPanel) stickerPanel.hidden = true; if (gifPanel) gifPanel.hidden = true;
     const iconColor = Number(topic.iconColor);
     title.style.color = Number.isSafeInteger(iconColor) && iconColor > 0 && iconColor <= 0xffffff
@@ -186,6 +187,8 @@ window.ForumTopics = (() => {
     const ctx = context, topic = ctx?.topic;
     if (!valid(ctx) || !topic || busy || (append && !messageOffset)) return;
     busy = true; const current = ++sequence; const oldOffset = append ? messageOffset : null;
+    const historyLoad = append ? null : { ctx, topic, messages: new Map() };
+    if (historyLoad) activeHistoryLoad = historyLoad;
     const oldScrollHeight = append ? (Number(list.scrollHeight) || 0) : 0;
     const oldScrollTop = append ? (Number(list.scrollTop) || 0) : 0;
     status.textContent = '正在加载话题消息…'; more.disabled = true;
@@ -194,8 +197,20 @@ window.ForumTopics = (() => {
       if (oldOffset) params.set('offsetId', String(oldOffset));
       const result = await api(`/api/instances/${encodeURIComponent(ctx.instId)}/account/forum-messages?${params}`);
       if (!valid(ctx) || current !== sequence || ctx.topic !== topic) return;
-      const messages = Array.isArray(result) ? result : [];
-      if (!append) { list.replaceChildren(); messageIds = new Set(); }
+      const pageMessages = Array.isArray(result) ? result : [];
+      let messages = pageMessages;
+      if (!append) {
+        const byId = new Map();
+        for (const message of pageMessages) {
+          const id = Number(message?.id);
+          if (Number.isSafeInteger(id) && id > 0) byId.set(id, message);
+        }
+        if (activeHistoryLoad === historyLoad) {
+          for (const [id, message] of historyLoad.messages) byId.set(id, message);
+        }
+        messages = [...byId.values()].sort((a, b) => Number(b.id) - Number(a.id));
+        list.replaceChildren(); messageIds = new Set();
+      }
       const elements = [];
       for (const message of [...messages].reverse()) {
         const id = Number(message.id); if (!Number.isSafeInteger(id) || id <= 0 || messageIds.has(id)) continue;
@@ -208,16 +223,19 @@ window.ForumTopics = (() => {
         list.append(...elements);
         list.scrollTop = list.scrollHeight;
       }
-      const lastId = messages.length ? Number(messages[messages.length - 1].id) : 0;
-      messageOffset = messages.length >= 50 && lastId > 0 && lastId !== oldOffset ? lastId : null;
+      const lastId = pageMessages.length ? Number(pageMessages[pageMessages.length - 1].id) : 0;
+      messageOffset = pageMessages.length >= 50 && lastId > 0 && lastId !== oldOffset ? lastId : null;
       more.hidden = !messageOffset; more.textContent = '加载更早消息'; status.textContent = !messageIds.size ? '暂无话题消息' : '';
-      if (!append && messages.length) {
-        const maxId = Math.max(0, ...messages.map(message => Number(message.id) || 0));
+      if (!append && pageMessages.length) {
+        const maxId = Math.max(0, ...pageMessages.map(message => Number(message.id) || 0));
         void markTopicRead(ctx, topic, maxId);
       }
     } catch (error) {
       if (valid(ctx) && current === sequence && ctx.topic === topic) { status.textContent = `无法加载话题消息：${error.message}`; messageOffset = oldOffset; more.hidden = false; more.textContent = '重试'; }
-    } finally { if (valid(ctx) && current === sequence) { busy = false; more.disabled = false; } }
+    } finally {
+      if (historyLoad && activeHistoryLoad === historyLoad) activeHistoryLoad = null;
+      if (valid(ctx) && current === sequence) { busy = false; more.disabled = false; }
+    }
   }
   async function markTopicRead(ctx, topic, maxId) {
     if (!valid(ctx) || ctx.topic !== topic || modal.hidden || !Number.isSafeInteger(maxId) || maxId <= 0 ||
@@ -272,6 +290,7 @@ window.ForumTopics = (() => {
     const id = Number(message.id);
     if (!Number.isSafeInteger(id) || id <= 0 || messageIds.has(id)) return;
     messageIds.add(id);
+    if (activeHistoryLoad?.ctx === ctx && activeHistoryLoad.topic === ctx.topic) activeHistoryLoad.messages.set(id, message);
     list.appendChild(renderMessage(message));
     if (!message.outgoing) {
       ctx.topic.unreadCount = (Number(ctx.topic.unreadCount) || 0) + 1;

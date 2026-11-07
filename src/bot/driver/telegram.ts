@@ -4502,12 +4502,22 @@ export class TelegramDriver implements BotAdapter {
     if (!resolved.length) return result;
 
     let entities = new Map<string, any>();
+    const dialogRows = new Map<string, Api.Dialog>();
+    const dialogMessages = new Map<string, any>();
     try {
       const response = await this.client.invoke(new Api.messages.GetPeerDialogs({
         peers: resolved.map(({ peer }) => new Api.InputDialogPeer({ peer })),
       })) as any;
       for (const entity of [...(response.users || []), ...(response.chats || [])]) {
         try { entities.set(getPeerId(entity), entity); } catch { /* incomplete Telegram entity */ }
+      }
+      for (const dialog of response.dialogs || []) {
+        if (dialog?.className !== 'Dialog' || !dialog.peer) continue;
+        try { dialogRows.set(getPeerId(dialog.peer), dialog as Api.Dialog); } catch { /* incomplete Telegram peer */ }
+      }
+      for (const message of response.messages || []) {
+        if (!message?.peerId || !Number.isSafeInteger(Number(message.id))) continue;
+        try { dialogMessages.set(`${getPeerId(message.peerId)}:${Number(message.id)}`, message); } catch { /* incomplete Telegram message */ }
       }
     } catch (err) {
       this.logger.debug({ err }, 'Unable to batch explicit folder peers');
@@ -4517,16 +4527,42 @@ export class TelegramDriver implements BotAdapter {
       try {
         const entity: any = entities.get(String(id)) || await this.client.getEntity(peer);
         if (!entity || !['User', 'Chat', 'Channel'].includes(entity.className)) continue;
+        const dialog = dialogRows.get(String(id));
+        const topMessageId = Number(dialog?.topMessage) || 0;
+        const message = topMessageId > 0
+          ? dialogMessages.get(`${id}:${topMessageId}`)
+          : undefined;
         const type: ChatType = entity.className === 'User' ? 'private' :
           entity.className === 'Channel' ? (entity.megagroup ? 'supergroup' : 'channel') : 'group';
         const title = entity.title || [entity.firstName, entity.lastName].filter(Boolean).join(' ') || entity.username || String(id);
+        let lastSender: string | undefined;
+        if (message?.fromId) {
+          try {
+            const sender: any = entities.get(getPeerId(message.fromId));
+            lastSender = sender?.firstName || sender?.title || sender?.username;
+          } catch { /* message has no usable sender peer */ }
+        }
         result.push({
-          id, type, title, username: entity.username, unreadCount: 0,
+          id, type, title, username: entity.username, unreadCount: dialog?.unreadCount || 0,
+          lastMessageId: message?.id || (topMessageId > 0 ? topMessageId : undefined),
+          lastMessageDate: message?.date ? Number(message.date) * 1000 : undefined,
+          lastMessage: message ? formatDialogMessageSnippet(message) : undefined,
+          lastSender,
+          pinned: dialog?.pinned,
           isSelf: Boolean(this.selfId && id === this.selfId),
           isChannel: entity.className === 'Channel', isForum: Boolean(entity.forum),
           online: entity.status?.className === 'UserStatusOnline' ? true : undefined,
           lastSeen: entity.status?.wasOnline ? entity.status.wasOnline * 1000 : undefined,
           isContact: Boolean(entity.contact), isBot: Boolean(entity.bot),
+          isPremium: Boolean(entity.premium), isCreator: Boolean(entity.creator),
+          isBroadcast: Boolean(entity.broadcast),
+          readInboxMaxId: dialog?.readInboxMaxId ? Number(dialog.readInboxMaxId) : undefined,
+          readOutboxMaxId: dialog?.readOutboxMaxId ? Number(dialog.readOutboxMaxId) : undefined,
+          muted: dialog?.notifySettings?.muteUntil
+            ? dialog.notifySettings.muteUntil > Date.now() / 1000 : undefined,
+          folderId: dialog?.folderId || 0, archived: dialog?.folderId === 1,
+          ttlPeriod: dialog ? (Number.isSafeInteger(dialog.ttlPeriod) && Number(dialog.ttlPeriod) >= 0 ? Number(dialog.ttlPeriod) : 0) : undefined,
+          draft: dialog ? mapCloudDraft(dialog.draft) : undefined,
         });
       } catch (err) {
         this.logger.debug({ peerId: id, err }, 'Skipped inaccessible explicit folder peer');

@@ -279,3 +279,41 @@ test('Telegram resolves explicit folder peers even when no dialog row exists', a
   assert.equal(dialogs[1].isForum, true);
   await assert.rejects(driver.getExplicitDialogs(Array(101).fill(12)), /Invalid/);
 });
+
+test('Telegram explicit folder peers preserve the dialog state returned by GetPeerDialogs', async () => {
+  const peer = new Api.PeerChannel({ channelId: bigInt(56) });
+  const sender = new Api.User({ id: bigInt(12), firstName: 'Mina', lastName: 'Chen' });
+  const channel = new Api.Channel({ id: bigInt(56), title: 'Support', megagroup: true, forum: true, accessHash: bigInt(2) });
+  const message = new Api.Message({ id: 42, peerId: peer, fromId: new Api.PeerUser({ userId: bigInt(12) }),
+    date: 1700000000, message: 'latest message' });
+  const dialog = new Api.Dialog({ peer, topMessage: 42, readInboxMaxId: 39, readOutboxMaxId: 40,
+    unreadCount: 3, unreadMentionsCount: 1, unreadReactionsCount: 0,
+    notifySettings: new Api.PeerNotifySettings({ muteUntil: Math.floor(Date.now() / 1000) + 3600 }),
+    pinned: true, folderId: 2, ttlPeriod: 86400,
+    draft: new Api.DraftMessage({ message: 'draft text', date: 1699999990, entities: [] }) });
+  const driver = Object.create(TelegramDriver.prototype);
+  driver.resolvePeer = id => BigInt(id);
+  driver.client = {
+    getInputEntity: async () => new Api.InputPeerChannel({ channelId: bigInt(56), accessHash: bigInt(2) }),
+    invoke: async request => {
+      assert.ok(request instanceof Api.messages.GetPeerDialogs);
+      return { users: [sender], chats: [channel], dialogs: [dialog], messages: [message] };
+    },
+    getEntity: async () => { throw new Error('the returned channel entity should be reused'); },
+  };
+  driver.logger = { debug() {} };
+
+  const [resolved] = await driver.getExplicitDialogs([-10056]);
+  assert.equal(resolved.unreadCount, 3);
+  assert.equal(resolved.lastMessageId, 42);
+  assert.equal(resolved.lastMessageDate, 1700000000000);
+  assert.equal(resolved.lastMessage, 'latest message');
+  assert.equal(resolved.lastSender, 'Mina');
+  assert.equal(resolved.pinned, true);
+  assert.equal(resolved.readInboxMaxId, 39);
+  assert.equal(resolved.readOutboxMaxId, 40);
+  assert.equal(resolved.muted, true);
+  assert.equal(resolved.folderId, 2);
+  assert.equal(resolved.ttlPeriod, 86400);
+  assert.equal(resolved.draft.text, 'draft text');
+});

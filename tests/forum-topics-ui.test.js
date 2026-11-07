@@ -72,6 +72,18 @@ test('live topic messages append once and advance the topic read boundary',async
  assert.equal(f.list.children.length,2);assert.equal(f.requests.length,4);
  f.requests[3].resolve({});await tick();
 });
+test('live topic messages arriving during the initial history request survive the history refresh',async()=>{
+ const f=fixture();f.window.ForumTopics.open();f.requests[0].resolve({topics:[{id:55,title:'topic'}]});await tick();
+ f.list.children[0].children[0].onclick();
+ f.window.ForumTopics.handleMessage({id:91,chatId:-1001,topicId:55,text:'live',from:{firstName:'alice'},outgoing:false});
+ assert.equal(f.list.children.length,1);assert.equal(f.list.children[0].children[1].textContent,'live');
+ f.requests[1].resolve([{id:90,text:'history'}]);await tick();
+ assert.equal(f.list.children.length,2);
+ assert.equal(f.list.children[0].children[1].textContent,'history');
+ assert.equal(f.list.children[1].children[1].textContent,'live');
+ assert.match(f.requests[2].url,/forum-topic-read/);assert.equal(f.requests[2].body.maxId,91);
+ f.requests[2].resolve({});await tick();
+});
 test('remote topic title and closed state update the open topic view',async()=>{
  const f=fixture();f.window.ForumTopics.open();f.requests[0].resolve({topics:[{id:55,title:'topic'}]});await tick();
  f.list.children[0].children[0].onclick();f.requests[1].resolve([]);await tick();
