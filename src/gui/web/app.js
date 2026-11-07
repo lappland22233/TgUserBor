@@ -170,6 +170,7 @@ class NetworkScheduler {
     this.runningImages = 0;
     this.queue = [];
     this.imageRequests = new WeakMap();
+    this.imageObjectUrls = new WeakMap();
     this.visibleRequests = new WeakMap();
   }
 
@@ -199,23 +200,66 @@ class NetworkScheduler {
   }
 
   loadImage(imgEl, src, fallbackSrc = '') {
-    const request = {};
-    if (imgEl) this.imageRequests.set(imgEl, request);
-    return this.enqueue(() => new Promise((resolve) => {
-      if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-      const img = new Image();
-      img.onload = () => {
-        if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-        if (imgEl) imgEl.src = src;
-        resolve(true);
-      };
-      img.onerror = () => {
-        if (imgEl && this.imageRequests.get(imgEl) !== request) return resolve(false);
-        if (imgEl && fallbackSrc) imgEl.src = fallbackSrc;
-        resolve(false);
-      };
-      img.src = src;
-    }), 2, true);
+    const request = { controller: new AbortController() };
+    if (imgEl) {
+      this.imageRequests.get(imgEl)?.controller.abort();
+      this.imageRequests.set(imgEl, request);
+    }
+    const current = () => !request.controller.signal.aborted &&
+      (!imgEl || this.imageRequests.get(imgEl) === request);
+    const fail = () => {
+      if (current() && imgEl && fallbackSrc) {
+        imgEl.src = fallbackSrc;
+        const previous = this.imageObjectUrls.get(imgEl);
+        if (previous) URL.revokeObjectURL(previous);
+        this.imageObjectUrls.delete(imgEl);
+      }
+      return false;
+    };
+    return this.enqueue(async () => {
+      let objectUrl = '';
+      let transferred = false;
+      try {
+        if (!current()) return false;
+        // Media responses are deliberately no-store. Fetch once and decode the
+        // resulting blob so assigning the image never downloads it a second time.
+        const response = await fetch(src, { signal: request.controller.signal });
+        if (!response.ok) return fail();
+        const blob = await response.blob();
+        if (!current()) return false;
+        objectUrl = URL.createObjectURL(blob);
+        const loaded = await new Promise(resolve => {
+          const img = new Image();
+          const done = ok => {
+            img.onload = null;
+            img.onerror = null;
+            request.controller.signal.removeEventListener('abort', aborted);
+            resolve(ok);
+          };
+          const aborted = () => { img.src = ''; done(false); };
+          img.onload = () => done(true);
+          img.onerror = () => done(false);
+          request.controller.signal.addEventListener('abort', aborted, { once: true });
+          if (!current()) return aborted();
+          img.src = objectUrl;
+        });
+        if (!loaded) return fail();
+        if (!current()) return false;
+        if (imgEl) {
+          const previous = this.imageObjectUrls.get(imgEl);
+          imgEl.src = objectUrl;
+          this.imageObjectUrls.set(imgEl, objectUrl);
+          transferred = true;
+          if (previous) URL.revokeObjectURL(previous);
+        }
+        return true;
+      } catch (_) {
+        return fail();
+      } finally {
+        if (objectUrl && !transferred) URL.revokeObjectURL(objectUrl);
+        if (imgEl && this.imageRequests.get(imgEl) === request) this.imageRequests.delete(imgEl);
+      }
+    }, 2, true);
   }
 
   loadVisibleImage(img, src) {
@@ -232,6 +276,9 @@ class NetworkScheduler {
       this.visibleRequests.set(img, () => { img.removeAttribute('src'); done(false); });
       img.addEventListener('load', onLoad);
       img.addEventListener('error', onError);
+      // Visibility was already checked before entering the queue. Native lazy
+      // loading can otherwise stall this slot if the image scrolls away.
+      img.loading = 'eager';
       img.src = src;
     }), 2, true);
   }
@@ -266,7 +313,12 @@ class NetworkScheduler {
   }
 
   cancelImage(imgEl) {
-    if (imgEl) this.imageRequests.delete(imgEl);
+    if (!imgEl) return;
+    this.imageRequests.get(imgEl)?.controller.abort();
+    this.imageRequests.delete(imgEl);
+    const objectUrl = this.imageObjectUrls.get(imgEl);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    this.imageObjectUrls.delete(imgEl);
   }
 }
 
@@ -313,11 +365,13 @@ function initManagedImages() {
         for (const img of images) {
           if (intersection) intersection.unobserve(img);
           scheduler.cancelVisibleImage(img);
+          scheduler.cancelImage(img);
         }
       }
     }
   }).observe(document.body, { childList: true, subtree: true });
 }
+
 
 // Telegram / Twemoji Vector SVG Emojis (No System Fonts)
 function getEmojiHex(emoji) {

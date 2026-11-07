@@ -19,7 +19,7 @@ function harness(extra = {}) {
 function image() {
   const listeners = {};
   return {
-    isConnected: true, src: '',
+    isConnected: true, src: '', loading: 'lazy',
     addEventListener(type, listener) { listeners[type] = listener; },
     removeEventListener(type) { delete listeners[type]; },
     removeAttribute(name) { if (name === 'src') this.src = ''; },
@@ -34,10 +34,12 @@ test('visible media uses one slot and leaves another for interactive requests', 
   const a = scheduler.loadVisibleImage(first, '/first');
   const b = scheduler.loadVisibleImage(second, '/second');
   assert.equal(first.src, '/first');
+  assert.equal(first.loading, 'eager');
   assert.equal(second.src, '');
   assert.equal(await scheduler.enqueue(async () => 'api', 0), 'api');
   first.emit('load'); await a; await tick();
   assert.equal(second.src, '/second');
+  assert.equal(second.loading, 'eager');
   second.emit('load'); await b;
 });
 
