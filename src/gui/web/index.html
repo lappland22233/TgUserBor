@@ -661,38 +661,46 @@
                   </div>
                 </div>
                 <div class="chat-header-actions" id="client-chat-actions" style="display: none;" tabindex="0" aria-label="聊天操作">
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-bot-menu" type="button" hidden>菜单</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-pinned" type="button" hidden>置顶消息</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-topics" type="button" hidden>话题</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-discussion-group" type="button" hidden title="管理此频道的关联讨论群">关联讨论群</button>
                   <button class="btn btn-secondary btn-sm" id="btn-chat-search-toggle" title="在当前聊天中搜索消息">
                     <svg class="ui-icon-sm"><use href="#icon-search-chat"/></svg>
                     <span class="btn-text">搜索</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-translation-toggle" type="button" hidden aria-pressed="false" title="始终翻译此对话">始终翻译</button>
                   <button class="btn btn-secondary btn-sm" id="btn-chat-drawer-toggle" title="查看主页资料、动态与媒体">
                     <svg class="ui-icon-sm"><use href="#icon-user"/></svg>
                     <span class="btn-text">资料/动态</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-theme-toggle" title="本机聊天风格与 Telegram 会话主题和壁纸">
-                    <svg class="ui-icon-sm"><use href="#icon-palette"/></svg>
-                    <span class="btn-text">壁纸</span>
+                  <button class="btn btn-secondary btn-sm" id="btn-chat-topics" type="button" hidden title="查看话题">
+                    <svg class="ui-icon-sm"><use href="#icon-chat"/></svg>
+                    <span class="btn-text">话题</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-mute-toggle" title="会话免打扰与静音">
-                    <svg class="ui-icon-sm"><use href="#icon-volume-off"/></svg>
-                    <span class="btn-text" id="chat-mute-status-text">免打扰</span>
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-typing" title="发送 正在输入... 状态">
-                    <span>打字中...</span>
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="btn-chat-purge" title="批量清理本会话消息">
-                    <svg class="ui-icon-sm"><use href="#icon-broom"/></svg>
-                    <span class="btn-text">撤回</span>
-                  </button>
-                  <button class="btn btn-danger btn-sm" id="btn-chat-leave" title="退出此群聊/频道">
-                    <svg class="ui-icon-sm"><use href="#icon-logout"/></svg>
-                    <span class="btn-text">退出</span>
-                  </button>
+                  <details class="chat-header-overflow">
+                    <summary title="更多聊天操作" aria-label="更多聊天操作">
+                      <svg class="ui-icon-sm"><use href="#icon-dots-vertical"/></svg>
+                    </summary>
+                    <div class="chat-header-overflow-menu" aria-label="更多聊天操作">
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-bot-menu" type="button" hidden>菜单</button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-pinned" type="button" hidden title="查看置顶消息">置顶消息</button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-discussion-group" type="button" hidden title="管理此频道的关联讨论群">关联讨论群</button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-translation-toggle" type="button" hidden aria-pressed="false" title="始终翻译此对话">始终翻译</button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-theme-toggle" title="本机聊天风格与 Telegram 会话主题和壁纸">
+                        <svg class="ui-icon-sm"><use href="#icon-palette"/></svg>
+                        <span class="btn-text">壁纸</span>
+                      </button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-mute-toggle" title="会话免打扰与静音">
+                        <svg class="ui-icon-sm"><use href="#icon-volume-off"/></svg>
+                        <span class="btn-text" id="chat-mute-status-text">免打扰</span>
+                      </button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-typing" title="发送 正在输入... 状态">打字中...</button>
+                      <button class="btn btn-secondary btn-sm" id="btn-chat-purge" title="批量清理本会话消息">
+                        <svg class="ui-icon-sm"><use href="#icon-broom"/></svg>
+                        <span class="btn-text">撤回</span>
+                      </button>
+                      <button class="btn btn-danger btn-sm" id="btn-chat-leave" title="退出此群聊/频道">
+                        <svg class="ui-icon-sm"><use href="#icon-logout"/></svg>
+                        <span class="btn-text">退出</span>
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
 
