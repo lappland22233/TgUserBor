@@ -58,6 +58,8 @@ export class Bot {
     this.adapter.on('message', (msg) => this.bus.emit('message', msg));
     this.adapter.on('message:edited', (msg) => this.bus.emit('message:edited', msg));
     this.adapter.on('message:deleted', (e) => this.bus.emit('message:deleted', e));
+    this.adapter.on('message:read', (e) => this.bus.emit('message:read', e));
+    this.adapter.on('chat:typing', (e) => this.bus.emit('chat:typing', e));
     this.adapter.on('message:reaction', (e) => this.bus.emit('message:reaction', e));
     this.adapter.on('callback:query', (e) => this.bus.emit('callback:query', e));
     this.adapter.on('user:status', (e) => this.bus.emit('user:status', e));
