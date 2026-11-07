@@ -1907,6 +1907,22 @@ function initListeners() {
   const btnSearchClose = document.getElementById('btn-chat-search-close');
   const chatSearchInput = document.getElementById('chat-search-input');
   const chatSearchFilter = document.getElementById('chat-search-filter');
+  const chatHeaderOverflow = document.querySelector('.chat-header-overflow');
+  const chatHeaderOverflowMenu = chatHeaderOverflow?.querySelector('.chat-header-overflow-menu');
+  chatHeaderOverflowMenu?.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('button')) chatHeaderOverflow.open = false;
+  });
+  document.addEventListener('click', (event) => {
+    if (chatHeaderOverflow?.open && event.target instanceof Node && !chatHeaderOverflow.contains(event.target)) {
+      chatHeaderOverflow.open = false;
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && chatHeaderOverflow?.open) {
+      chatHeaderOverflow.open = false;
+      chatHeaderOverflow.querySelector('summary')?.focus();
+    }
+  });
   if (btnSearchToggle) btnSearchToggle.onclick = () => toggleChatSearchBar();
   if (btnSearchClose) btnSearchClose.onclick = () => toggleChatSearchBar(false);
   if (chatSearchInput) {
