@@ -18,6 +18,10 @@ test('channel member pages use Telegram search, native offsets, and map particip
     getInputEntity: async () => peer,
     invoke: async request => {
       calls.push(request);
+      if (request instanceof Api.channels.GetParticipant) return { participant: new Api.ChannelParticipantAdmin({
+        userId: bigInt(77), promotedBy: bigInt(1), date: 1,
+        adminRights: new Api.ChatAdminRights({ banUsers: true, inviteUsers: true, addAdmins: true }),
+      }) };
       return {
         count: 60,
         users: [new Api.User({ id: bigInt(10), firstName: 'Ada', username: 'ada' })],
@@ -35,6 +39,7 @@ test('channel member pages use Telegram search, native offsets, and map particip
   assert.equal(page.participants[0].role, 'admin');
   assert.equal(page.participants[0].joinedDate, 123);
   assert.equal(page.participants[0].user.username, 'ada');
+  assert.deepEqual(page.selfPermissions, { isCreator: false, canInviteUsers: true, canBanUsers: true, canAddAdmins: true });
   assert.ok(calls[0] instanceof Api.channels.GetParticipants);
   assert.ok(calls[0].filter instanceof Api.ChannelParticipantsSearch);
   assert.equal(calls[0].filter.q, 'ada');
@@ -43,12 +48,14 @@ test('channel member pages use Telegram search, native offsets, and map particip
   await assert.rejects(driver.getParticipantsPage(-42, -1), /Invalid participant query/);
   await assert.rejects(driver.getParticipantsPage(42), /Invalid participant query/);
   await assert.rejects(driver.getParticipantsPage(-42, 0, 1, 'x'.repeat(129)), /Invalid participant query/);
-  assert.equal(calls.length, 1);
+  assert.ok(calls[1] instanceof Api.channels.GetParticipant);
+  assert.equal(calls.length, 2);
 });
 
 test('basic-group member pages filter IDs locally and paginate the Telegram roster', async () => {
   const peer = new Api.InputPeerChat({ chatId: bigInt(42) });
   const driver = Object.create(TelegramDriver.prototype);
+  driver.selfId = 77;
   driver.resolvePeer = id => id;
   driver.client = {
     getInputEntity: async () => peer,
@@ -60,10 +67,17 @@ test('basic-group member pages filter IDs locally and paginate the Telegram rost
         new Api.User({ id: bigInt(110), firstName: 'Robert' }),
       ];
     },
+    invoke: async request => {
+      assert.ok(request instanceof Api.messages.GetFullChat);
+      return { fullChat: { participants: { participants: [new Api.ChatParticipantAdmin({
+        userId: bigInt(77), inviterId: bigInt(1), date: 1,
+      })] } } };
+    },
   };
   assert.deepEqual(await driver.getParticipantsPage(-42, 0, 1, '11'), {
     count: 2,
     participants: [{ user: { id: 11, username: undefined, firstName: 'Bob', lastName: undefined, isBot: false, phone: undefined }, role: 'member', joinedDate: undefined, supportsCustomAdminRights: false, adminPermissions: undefined }],
+    selfPermissions: { isCreator: false, canInviteUsers: true, canBanUsers: true, canAddAdmins: false },
     nextOffset: 1,
   });
   const second = await driver.getParticipantsPage(-42, 1, 1, '11');

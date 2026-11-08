@@ -22,6 +22,7 @@ function setup() {
     ['members-list-container', container], ['member-search-input', { value: '' }], ['group-invite-search', { value: '', focus() {} }],
     ['modal-add-group-members', { style: {}, addEventListener() {} }], ['group-invite-list', new Element()],
     ['group-invite-status', { textContent: '' }], ['btn-add-selected-group-members', { disabled: true, textContent: '' }],
+    ['btn-add-group-members', { hidden: false }], ['btn-view-banned-members', { hidden: false }], ['btn-view-invite-links', { hidden: false }],
     ['modal-group-member-mute', { style: {}, addEventListener() {} }], ['group-member-mute-target', { textContent: '' }],
     ['group-member-mute-duration', { value: '3600' }], ['group-member-mute-status', { textContent: '' }],
     ['btn-save-group-member-mute', { disabled: false }],
@@ -58,7 +59,7 @@ test('stale member controls cannot kick or mute a member in another group', asyn
 });
 test('successful kick finishing after account switch does not reload old members under the new account', async () => {
   const h = setup(); const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve([person(10)]); await load;
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canBanUsers: true } }); await load;
   const kick = h.context.kickGroupMember(10, 'User10');
   assert.equal(h.requests[1].body.chatId, 1);
   h.state.clientSelectedInstance = 'b'; h.state.chatSelectionVersion++;
@@ -109,7 +110,7 @@ test('a late member search cannot restore results after the user changes chats',
 test('group member invitations search Telegram users and invite only selected users to the current chat', async () => {
   const h = setup();
   const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canInviteUsers: true } });
   await load;
   h.context.openGroupInviteModal();
   assert.equal(h.elements.get('modal-add-group-members').style.display, 'flex');
@@ -136,7 +137,7 @@ test('group member invitations search Telegram users and invite only selected us
 test('late Telegram user search results are discarded after the group invite target changes', async () => {
   const h = setup();
   const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canInviteUsers: true } });
   await load;
   h.context.openGroupInviteModal();
   const search = h.context.searchGroupInviteCandidates('new');
@@ -151,7 +152,7 @@ test('late Telegram user search results are discarded after the group invite tar
 test('member mute duration is selected in an account-bound modal and saved to the current group', async () => {
   const h = setup();
   const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canBanUsers: true } });
   await load;
   h.context.openGroupMuteModal(10, 'User10');
   assert.equal(h.elements.get('modal-group-member-mute').style.display, 'flex');
@@ -167,7 +168,7 @@ test('member mute duration is selected in an account-bound modal and saved to th
 test('a stale member mute modal cannot target a group after chat selection changes', async () => {
   const h = setup();
   const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canBanUsers: true } });
   await load;
   h.context.openGroupMuteModal(10, 'User10');
   h.state.clientActiveChatId = '2'; h.state.chatSelectionVersion++;
@@ -179,7 +180,7 @@ test('a stale member mute modal cannot target a group after chat selection chang
 test('member ban confirms the selected duration, targets the current group and reloads members', async () => {
   const h = setup();
   const load = h.context.loadGroupMembers(1);
-  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  h.requests[0].resolve({ count: 1, participants: [person(10)], selfPermissions: { canBanUsers: true } });
   await load;
   h.context.openGroupBanModal(10, 'User10');
   h.elements.get('group-member-mute-duration').value = '604800';
@@ -196,4 +197,37 @@ test('member ban confirms the selected duration, targets the current group and r
   await save;
   assert.equal(h.state.groupMembers.length, 0);
   assert.match(h.toasts.at(-1), /已封禁/);
+});
+
+test('member management menu only includes operations granted to the current account', async () => {
+  const h = setup();
+  let load = h.context.loadGroupMembers(1);
+  h.requests[0].resolve({ count: 1, participants: [person(10)] });
+  await load;
+  assert.doesNotMatch(h.container.innerHTML, /manageGroupAdmin|openGroupMuteModal|openGroupBanModal|kickGroupMember/);
+  assert.equal(h.elements.get('btn-add-group-members').hidden, true);
+  assert.equal(h.elements.get('btn-view-banned-members').hidden, true);
+  assert.equal(h.elements.get('btn-view-invite-links').hidden, true);
+
+  load = h.context.loadGroupMembers(1);
+  h.requests[1].resolve({ count: 1, participants: [person(10)], selfPermissions: {
+    canAddAdmins: true, canBanUsers: true, canInviteUsers: true,
+  } });
+  await load;
+  assert.match(h.container.innerHTML, /manageGroupAdmin\(10/);
+  assert.match(h.container.innerHTML, /openGroupMuteModal\(10/);
+  assert.match(h.container.innerHTML, /openGroupBanModal\(10/);
+  assert.match(h.container.innerHTML, /kickGroupMember\(10/);
+  assert.equal(h.elements.get('btn-add-group-members').hidden, false);
+  assert.equal(h.elements.get('btn-view-banned-members').hidden, false);
+  assert.equal(h.elements.get('btn-view-invite-links').hidden, false);
+});
+
+test('a non-creator with ban rights does not get moderation actions for another admin', async () => {
+  const h = setup();
+  const admin = { ...person(10), role: 'admin' };
+  const load = h.context.loadGroupMembers(1);
+  h.requests[0].resolve({ count: 1, participants: [admin], selfPermissions: { canBanUsers: true } });
+  await load;
+  assert.doesNotMatch(h.container.innerHTML, /openGroupMuteModal|openGroupBanModal|kickGroupMember/);
 });

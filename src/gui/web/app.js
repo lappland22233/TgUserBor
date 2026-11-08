@@ -2914,6 +2914,37 @@ function formatDialogTime(ts) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+function updateClientTotalUnreadBadge() {
+  const totalUnread = (state.clientDialogs || []).reduce((sum, dialog) => sum + (Number(dialog.unreadCount) || 0), 0);
+  const totalBadgeEl = document.getElementById('badge-unread-total');
+  if (!totalBadgeEl) return;
+  if (totalUnread > 0) {
+    totalBadgeEl.innerText = totalUnread > 99 ? '99+' : totalUnread;
+    totalBadgeEl.style.display = 'inline-block';
+  } else {
+    totalBadgeEl.style.display = 'none';
+  }
+}
+
+function updateClientDialogSelection(chatId) {
+  const container = document.getElementById('client-dialogs-list');
+  if (!container) return;
+  for (const item of container.querySelectorAll('.dialog-item')) {
+    item.classList.toggle('active', String(item.dataset.chatId) === String(chatId));
+  }
+}
+
+function updateClientDialogUnreadBadge(chatId) {
+  const container = document.getElementById('client-dialogs-list');
+  const dialog = (state.clientDialogs || []).find(item => String(item.id) === String(chatId));
+  if (container && dialog) {
+    const row = [...container.querySelectorAll('.dialog-item')].find(item => String(item.dataset.chatId) === String(chatId));
+    const badge = row?.querySelector('.dialog-badge');
+    if (badge && !(Number(dialog.unreadCount) > 0)) badge.remove();
+  }
+  updateClientTotalUnreadBadge();
+}
+
 function renderClientDialogs() {
   const container = document.getElementById('client-dialogs-list');
   if (!container) return;
@@ -2922,16 +2953,7 @@ function renderClientDialogs() {
   if (storiesBar) storiesBar.hidden = state.clientDialogFilter === 'archived' || String(state.clientDialogFilter || '').startsWith('folder:') || Boolean(searchText);
 
   // Update total unread badge on tab
-  const totalUnread = (state.clientDialogs || []).reduce((sum, d) => sum + (Number(d.unreadCount) || 0), 0);
-  const totalBadgeEl = document.getElementById('badge-unread-total');
-  if (totalBadgeEl) {
-    if (totalUnread > 0) {
-      totalBadgeEl.innerText = totalUnread > 99 ? '99+' : totalUnread;
-      totalBadgeEl.style.display = 'inline-block';
-    } else {
-      totalBadgeEl.style.display = 'none';
-    }
-  }
+  updateClientTotalUnreadBadge();
 
   const search = (document.getElementById('client-dialogs-search')?.value || '').toLowerCase().trim();
   const filterType = state.clientDialogFilter || 'all';
@@ -2982,7 +3004,8 @@ function renderClientDialogs() {
   container.innerHTML = '';
   for (const d of list) {
     const item = document.createElement('div');
-    item.className = `dialog-item ${state.clientActiveChatId === d.id ? 'active' : ''}`;
+    item.className = `dialog-item ${String(state.clientActiveChatId) === String(d.id) ? 'active' : ''}`;
+    item.dataset.chatId = String(d.id);
 
     const isMuted = Boolean(d.muted);
     const initials = (d.title || d.username || 'TG').slice(0, 2);
@@ -3365,7 +3388,7 @@ async function selectClientChat(dialog, options = {}) {
   void window.CloudDrafts?.open(instId, dialog.id);
 
   document.querySelector('.client-layout')?.classList.add('in-chat');
-  renderClientDialogs();
+  updateClientDialogSelection(dialog.id);
 
   const initials = (dialog.title || dialog.username || 'TG').slice(0, 2);
   const headerAvatarImg = document.getElementById('client-chat-avatar-img');
@@ -3467,7 +3490,7 @@ async function markVisibleChatRead(instId, chatId) {
     if (!current || (current.lastMessageId && Number(current.lastMessageId) > maxId)) return;
     current.unreadCount = 0;
     window.chatWs?.recordDialogRead?.(instId, chatId, maxId);
-    renderClientDialogs();
+    updateClientDialogUnreadBadge(chatId);
   } catch (_) { /* Preserve unread state if Telegram did not acknowledge it. */ }
 }
 
@@ -3780,12 +3803,12 @@ async function openDiscussionGroupDialog() {
   const renderState = (result, message) => {
     stateResult = result;
     const linked = result?.linkedGroup;
-    current.textContent = linked ? `当前关联讨论群：${linked.title}` : '此频道当前没有关联讨论群。';
+    current.textContent = linked ? `当前关联讨论群：${linked.title}${linked.username ? ` · @${linked.username}` : ''}` : '此频道当前没有关联讨论群。';
     const groups = Array.isArray(result?.groups) ? result.groups.filter(group =>
       Number.isSafeInteger(Number(group?.id)) && Number(group.id) < 0 && typeof group.title === 'string' && group.title) : [];
     select.replaceChildren(new Option('选择一个超级群组…', ''));
     for (const group of groups) {
-      const label = `${group.title}${Number.isSafeInteger(group.membersCount) ? ` · ${group.membersCount} 位成员` : ''}`;
+      const label = `${group.title}${group.username ? ` · @${group.username}` : ''}${Number.isSafeInteger(group.membersCount) ? ` · ${group.membersCount} 位成员` : ''}`;
       const option = new Option(label, String(group.id));
       option.disabled = Number(group.id) === Number(linked?.id);
       select.appendChild(option);
@@ -3794,8 +3817,8 @@ async function openDiscussionGroupDialog() {
     link.disabled = true;
     unlink.hidden = !linked;
     const hasAlternative = groups.some(group => Number(group.id) !== Number(linked?.id));
-    status.textContent = message || (hasAlternative ? '关联后，该群组将作为此频道帖子的讨论区。最终权限由 Telegram 校验。'
-      : groups.length ? '当前关联已是 Telegram 返回的唯一可用群组。' : 'Telegram 没有返回可关联的超级群组。');
+    status.textContent = message || (hasAlternative ? '列表仅包含 Telegram 判定当前账号可关联的超级群组。'
+      : groups.length ? 'Telegram 当前只返回已关联的可用群组。' : '当前账号没有 Telegram 允许关联的超级群组。');
   };
   try {
     stateResult = await api(`/api/instances/${encodeURIComponent(instId)}/account/discussion-groups?channelId=${encodeURIComponent(session.channelId)}`);
@@ -9444,6 +9467,25 @@ function invalidateGroupMembers() {
   if (container) container.innerHTML = '<div class="empty-hint">请先加载当前群成员</div>';
 }
 
+function normalizeGroupSelfPermissions(value) {
+  return {
+    isCreator: Boolean(value?.isCreator),
+    canInviteUsers: Boolean(value?.canInviteUsers),
+    canBanUsers: Boolean(value?.canBanUsers),
+    canAddAdmins: Boolean(value?.canAddAdmins),
+  };
+}
+
+function canManageGroupMemberTarget(member, action) {
+  const permissions = groupMembersContext?.selfPermissions || normalizeGroupSelfPermissions();
+  const targetIsOwner = member?.role === 'owner';
+  const targetIsAdmin = member?.role === 'admin';
+  const targetCanBeManaged = targetIsAdmin || member?.role === 'member';
+  if (action === 'admin') return permissions.canAddAdmins && targetCanBeManaged;
+  if (action === 'moderate') return permissions.canBanUsers && targetCanBeManaged && (!targetIsAdmin || permissions.isCreator);
+  return false;
+}
+
 function isCurrentGroupMembersContext(context) {
   return Boolean(context && context === groupMembersContext &&
     state.clientSelectedInstance === context.instId &&
@@ -9644,6 +9686,7 @@ function isCurrentGroupInviteSession(session = groupInviteSession) {
 function openGroupInviteModal() {
   const context = groupMembersContext;
   if (!isCurrentGroupMembersContext(context)) return showToast('请先加载当前群成员', 'warn');
+  if (!context.selfPermissions?.canInviteUsers) return showToast('当前账号没有邀请成员的权限', 'warn');
   const modal = document.getElementById('modal-add-group-members');
   if (!modal) return showToast('添加成员窗口不可用', 'error');
   closeGroupInviteModal();
@@ -9738,6 +9781,7 @@ async function searchGroupInviteCandidates(query) {
 async function inviteSelectedGroupMembers() {
   const session = groupInviteSession;
   if (!isCurrentGroupInviteSession(session) || !session.selected.size || session.loading) return;
+  if (!session.context.selfPermissions?.canInviteUsers) return showToast('当前账号没有邀请成员的权限', 'warn');
   const selected = [...session.selected.values()].slice(0, 10);
   session.loading = true;
   const status = document.getElementById('group-invite-status');
@@ -9830,10 +9874,11 @@ async function loadGroupMembers(chatId, reset = true) {
     }
 
     if (!current()) return;
-    if (bannedButton) bannedButton.hidden = !(Number(chatId) < 0);
-    if (inviteButton) inviteButton.hidden = !(Number(chatId) < 0);
-    if (addButton) addButton.hidden = !(Number(chatId) < 0);
     const normalizedPage = Array.isArray(page) ? { count: page.length, participants: page } : (page || {});
+    context.selfPermissions = normalizeGroupSelfPermissions(normalizedPage.selfPermissions);
+    if (bannedButton) bannedButton.hidden = !context.selfPermissions.canBanUsers;
+    if (inviteButton) inviteButton.hidden = !context.selfPermissions.canInviteUsers;
+    if (addButton) addButton.hidden = !context.selfPermissions.canInviteUsers;
     const participants = Array.isArray(normalizedPage.participants) ? normalizedPage.participants : [];
     const members = reset ? [] : state.groupMembers.slice();
     const seen = new Set(members.map(item => String(item.user?.id)));
@@ -9890,6 +9935,8 @@ function renderGroupMembers() {
     const initials = Array.from(u.firstName || u.username || 'U').slice(0, 2).join('');
     const usernameStr = u.username ? `@${u.username}` : `ID: ${u.id}`;
     const avatarUrl = `/api/instances/${encodeURIComponent(state.clientSelectedInstance)}/account/avatar?chatId=${encodeURIComponent(u.id)}`;
+    const canManageAdmin = canManageGroupMemberTarget(item, 'admin');
+    const canModerate = canManageGroupMemberTarget(item, 'moderate');
 
     let roleBadgeHtml = '';
     if (item.role === 'owner') {
@@ -9919,10 +9966,10 @@ function renderGroupMembers() {
           <summary aria-label="${escapeHtml(`管理 ${fullName}`)}" title="成员操作"><svg class="ui-icon-sm"><use href="#icon-dots-vertical"/></svg></summary>
           <div class="member-actions-menu-list">
             <button type="button" class="member-menu-action" onclick="startDirectChat(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">发起私聊</button>
-            ${item.role !== 'owner' ? `<button type="button" class="member-menu-action" onclick="manageGroupAdmin(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">${item.role === 'admin' ? (item.supportsCustomAdminRights ? '管理管理员权限' : '撤销管理员') : '设为管理员'}</button>` : ''}
-            ${item.supportsCustomAdminRights ? `<button type="button" class="member-menu-action" onclick="openGroupMuteModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">设置禁言时长</button>` : ''}
-            ${item.supportsCustomAdminRights && item.role !== 'owner' ? `<button type="button" class="member-menu-action danger" onclick="openGroupBanModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">封禁此成员</button>` : ''}
-            <button type="button" class="member-menu-action danger" onclick="kickGroupMember(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">移出群组</button>
+            ${canManageAdmin ? `<button type="button" class="member-menu-action" onclick="manageGroupAdmin(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">${item.role === 'admin' ? (item.supportsCustomAdminRights ? '管理管理员权限' : '撤销管理员') : '设为管理员'}</button>` : ''}
+            ${canModerate && item.supportsCustomAdminRights ? `<button type="button" class="member-menu-action" onclick="openGroupMuteModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">设置禁言时长</button>` : ''}
+            ${canModerate && item.supportsCustomAdminRights ? `<button type="button" class="member-menu-action danger" onclick="openGroupBanModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">封禁此成员</button>` : ''}
+            ${canModerate ? `<button type="button" class="member-menu-action danger" onclick="kickGroupMember(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">移出群组</button>` : ''}
           </div>
         </details>
       </div>
@@ -10253,6 +10300,7 @@ function manageGroupAdmin(userId, name) {
   if (!isCurrentGroupMembersContext(context)) return showToast('群成员列表已过期，请重新加载', 'warn');
   const member = state.groupMembers.find((item) => String(item.user?.id) === String(userId));
   if (!member || member.role === 'owner') return showToast('无法修改该成员的管理员身份', 'warn');
+  if (!canManageGroupMemberTarget(member, 'admin')) return showToast('当前账号没有管理管理员的权限', 'warn');
   if (!member.supportsCustomAdminRights) {
     return member.role === 'admin' ? demoteGroupAdmin(userId, name) : promoteBasicGroupAdmin(userId, name);
   }
@@ -10317,6 +10365,8 @@ async function saveGroupAdminRights(event) {
 async function demoteGroupAdmin(userId, name) {
   const context = groupMembersContext;
   if (!isCurrentGroupMembersContext(context)) return showToast('群成员列表已过期，请重新加载', 'warn');
+  const member = state.groupMembers.find(item => String(item.user?.id) === String(userId));
+  if (!member || !canManageGroupMemberTarget(member, 'admin')) return showToast('当前账号没有管理管理员的权限', 'warn');
   if (!confirm(`确定撤销【${name}】的管理员身份吗？`)) return;
   if (!isCurrentGroupMembersContext(context)) return;
   const { instId, chatId } = context;
@@ -10336,6 +10386,8 @@ async function demoteGroupAdmin(userId, name) {
 async function promoteBasicGroupAdmin(userId, name) {
   const context = groupMembersContext;
   if (!isCurrentGroupMembersContext(context)) return showToast('群成员列表已过期，请重新加载', 'warn');
+  const member = state.groupMembers.find(item => String(item.user?.id) === String(userId));
+  if (!member || !canManageGroupMemberTarget(member, 'admin')) return showToast('当前账号没有管理管理员的权限', 'warn');
   if (!confirm(`确定将【${name}】设为群管理员吗？`)) return;
   if (!isCurrentGroupMembersContext(context)) return;
   const { instId, chatId } = context;
@@ -10381,6 +10433,8 @@ async function revokeGroupAdminRights() {
 async function kickGroupMember(userId, name) {
   const context = groupMembersContext;
   if (!isCurrentGroupMembersContext(context)) return showToast('群成员列表已过期，请重新加载', 'warn');
+  const member = state.groupMembers.find(item => String(item.user?.id) === String(userId));
+  if (!member || !canManageGroupMemberTarget(member, 'moderate')) return showToast('当前账号没有移除该成员的权限', 'warn');
   if (!confirm(`确定要将【${name}】移出当前群聊吗？`)) return;
   if (!isCurrentGroupMembersContext(context)) return;
   const { instId, chatId } = context;
@@ -10402,6 +10456,7 @@ function openGroupMuteModal(userId, name, action = 'mute') {
   if (!isCurrentGroupMembersContext(context)) return showToast('群成员列表已过期，请重新加载', 'warn');
   const member = state.groupMembers.find(item => String(item.user?.id) === String(userId));
   if (!member || member.role === 'owner') return showToast('无法管理该成员', 'warn');
+  if (!canManageGroupMemberTarget(member, 'moderate')) return showToast('当前账号没有限制该成员的权限', 'warn');
   if (!member.supportsCustomAdminRights) return showToast('Telegram 仅允许在超级群或频道中管理单个成员限制', 'warn');
   const modal = document.getElementById('modal-group-member-mute');
   if (!modal) return showToast('成员限制窗口不可用', 'error');

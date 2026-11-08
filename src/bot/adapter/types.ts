@@ -54,6 +54,7 @@ export type MessageReportProgress =
 export interface DiscussionGroupInfo {
   id: number;
   title: string;
+  username?: string;
   membersCount?: number;
 }
 
@@ -298,6 +299,13 @@ export interface ParticipantInfo {
 export interface ParticipantsPage {
   count: number;
   participants: ParticipantInfo[];
+  /** Actions the current account can perform in this group. Missing/unknown rights are false. */
+  selfPermissions?: {
+    isCreator: boolean;
+    canInviteUsers: boolean;
+    canBanUsers: boolean;
+    canAddAdmins: boolean;
+  };
   nextOffset?: number;
 }
 
