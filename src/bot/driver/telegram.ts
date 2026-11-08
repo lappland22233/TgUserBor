@@ -3547,6 +3547,7 @@ export class TelegramDriver implements BotAdapter {
       res.push({
         user,
         role,
+        ...(pClass.includes('Left') || (pClass.includes('Banned') && Boolean(participant?.left)) ? { isLeft: true } : {}),
         joinedDate: participant?.date,
         supportsCustomAdminRights,
         adminPermissions: participant?.adminRights ? {
@@ -3566,14 +3567,20 @@ export class TelegramDriver implements BotAdapter {
 
   private async getSelfMemberActionPermissions(chatId: number, peer: Api.TypeInputPeer): Promise<NonNullable<ParticipantsPage['selfPermissions']>> {
     const noPermissions = { isCreator: false, canInviteUsers: false, canBanUsers: false, canAddAdmins: false };
-    const mapRole = (participant: any, basicGroup = false) => {
+    const mapRole = (participant: any, defaultBannedRights: any, basicGroup = false) => {
       const className = String(participant?.className || '');
       const isCreator = className.includes('Creator');
       const isAdmin = isCreator || className.includes('Admin');
+      const isLeft = className.includes('Left') || (className.includes('Banned') && Boolean(participant?.left));
+      const isParticipant = className.includes('Participant') && !isLeft;
       const rights = participant?.adminRights;
+      const inviteBannedByDefault = Boolean(defaultBannedRights?.inviteUsers);
+      const inviteBannedIndividually = Boolean(participant?.bannedRights?.inviteUsers);
       return {
         isCreator,
-        canInviteUsers: isCreator || (isAdmin && (basicGroup || Boolean(rights?.inviteUsers))),
+        canInviteUsers: isCreator || (isAdmin
+          ? basicGroup || Boolean(rights?.inviteUsers)
+          : isParticipant && !inviteBannedByDefault && !inviteBannedIndividually),
         canBanUsers: isCreator || (isAdmin && (basicGroup || Boolean(rights?.banUsers))),
         canAddAdmins: isCreator || Boolean(rights?.addAdmins),
       };
@@ -3582,10 +3589,11 @@ export class TelegramDriver implements BotAdapter {
     try {
       if (peer instanceof Api.InputPeerChannel) {
         const channel = await this.resolveAdminInputChannel(chatId);
-        const response: any = await this.client.invoke(new Api.channels.GetParticipant({
-          channel, participant: new Api.InputUserSelf(),
-        }));
-        return mapRole(response?.participant || response);
+        const [response, fullChannel]: [any, any] = await Promise.all([
+          this.client.invoke(new Api.channels.GetParticipant({ channel, participant: new Api.InputUserSelf() })),
+          this.client.invoke(new Api.channels.GetFullChannel({ channel })),
+        ]);
+        return mapRole(response?.participant || response, fullChannel?.fullChat?.defaultBannedRights);
       }
       if (peer instanceof Api.InputPeerChat) {
         const response: any = await this.client.invoke(new Api.messages.GetFullChat({ chatId: peer.chatId }));
@@ -3593,7 +3601,7 @@ export class TelegramDriver implements BotAdapter {
         const self = roster?.selfParticipant || (Array.isArray(roster?.participants)
           ? roster.participants.find((item: any) => Number(item?.userId?.toString?.() ?? item?.userId) === this.selfId)
           : undefined);
-        return mapRole(self, true);
+        return mapRole(self, response?.fullChat?.defaultBannedRights, true);
       }
     } catch {
       // Hide actions when Telegram cannot confirm the current account's rights.

@@ -2939,8 +2939,25 @@ function updateClientDialogUnreadBadge(chatId) {
   const dialog = (state.clientDialogs || []).find(item => String(item.id) === String(chatId));
   if (container && dialog) {
     const row = [...container.querySelectorAll('.dialog-item')].find(item => String(item.dataset.chatId) === String(chatId));
-    const badge = row?.querySelector('.dialog-badge');
-    if (badge && !(Number(dialog.unreadCount) > 0)) badge.remove();
+    const filter = String(state.clientDialogFilter || 'all');
+    const noLongerMatchesFilter = filter === 'unread'
+      ? !(Number(dialog.unreadCount) > 0)
+      : filter.startsWith('folder:') && !window.DialogFolders?.apply(filter, [dialog]).some(item => String(item.id) === String(chatId));
+    if (row && noLongerMatchesFilter) {
+      row.remove();
+      if (!container.querySelector('.dialog-item')) {
+        let emptyState = container.querySelector('.empty-state');
+        if (!emptyState) {
+          emptyState = document.createElement('div');
+          emptyState.className = 'empty-state';
+          container.prepend(emptyState);
+        }
+        emptyState.textContent = filter === 'unread' ? '没有未读会话' : '未找到匹配的会话';
+      }
+    } else {
+      const badge = row?.querySelector('.dialog-badge');
+      if (badge && !(Number(dialog.unreadCount) > 0)) badge.remove();
+    }
   }
   updateClientTotalUnreadBadge();
 }
@@ -9480,9 +9497,10 @@ function canManageGroupMemberTarget(member, action) {
   const permissions = groupMembersContext?.selfPermissions || normalizeGroupSelfPermissions();
   const targetIsOwner = member?.role === 'owner';
   const targetIsAdmin = member?.role === 'admin';
-  const targetCanBeManaged = targetIsAdmin || member?.role === 'member';
+  const targetCanBeManaged = !member?.isLeft && (targetIsAdmin || member?.role === 'member');
+  const targetCanBeModerated = !member?.isLeft && (targetCanBeManaged || member?.role === 'banned');
   if (action === 'admin') return permissions.canAddAdmins && targetCanBeManaged;
-  if (action === 'moderate') return permissions.canBanUsers && targetCanBeManaged && (!targetIsAdmin || permissions.isCreator);
+  if (action === 'moderate') return permissions.canBanUsers && targetCanBeModerated && (!targetIsAdmin || permissions.isCreator);
   return false;
 }
 

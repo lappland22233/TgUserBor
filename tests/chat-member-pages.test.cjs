@@ -22,6 +22,7 @@ test('channel member pages use Telegram search, native offsets, and map particip
         userId: bigInt(77), promotedBy: bigInt(1), date: 1,
         adminRights: new Api.ChatAdminRights({ banUsers: true, inviteUsers: true, addAdmins: true }),
       }) };
+      if (request instanceof Api.channels.GetFullChannel) return { fullChat: { defaultBannedRights: new Api.ChatBannedRights({}) } };
       return {
         count: 60,
         users: [new Api.User({ id: bigInt(10), firstName: 'Ada', username: 'ada' })],
@@ -45,11 +46,67 @@ test('channel member pages use Telegram search, native offsets, and map particip
   assert.equal(calls[0].filter.q, 'ada');
   assert.equal(calls[0].offset, 50);
   assert.equal(calls[0].limit, 1);
+  assert.ok(calls.some(request => request instanceof Api.channels.GetFullChannel));
   await assert.rejects(driver.getParticipantsPage(-42, -1), /Invalid participant query/);
   await assert.rejects(driver.getParticipantsPage(42), /Invalid participant query/);
   await assert.rejects(driver.getParticipantsPage(-42, 0, 1, 'x'.repeat(129)), /Invalid participant query/);
-  assert.ok(calls[1] instanceof Api.channels.GetParticipant);
-  assert.equal(calls.length, 2);
+  assert.ok(calls.some(request => request instanceof Api.channels.GetParticipant));
+  assert.equal(calls.length, 3);
+});
+
+test('ordinary members can invite only when both default and individual rights allow it', async () => {
+  const peer = new Api.InputPeerChannel({ channelId: bigInt(42), accessHash: bigInt(77) });
+  const read = async ({ defaultInviteBanned = false } = {}) => {
+    const driver = Object.create(TelegramDriver.prototype);
+    driver.selfId = 77;
+    driver.resolvePeer = id => id;
+    driver.client = {
+      getInputEntity: async () => peer,
+      invoke: async request => {
+        if (request instanceof Api.channels.GetParticipants) return { count: 0, participants: [], users: [] };
+        if (request instanceof Api.channels.GetParticipant) return { participant: new Api.ChannelParticipant({ userId: bigInt(77), date: 1 }) };
+        if (request instanceof Api.channels.GetFullChannel) return { fullChat: {
+          defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: defaultInviteBanned }),
+        } };
+        throw new Error(`unexpected ${request.className}`);
+      },
+    };
+    const permissions = (await driver.getParticipantsPage(-42)).selfPermissions;
+    return permissions;
+  };
+  assert.equal((await read()).canInviteUsers, true);
+  assert.equal((await read({ defaultInviteBanned: true })).canInviteUsers, false);
+
+  const driver = Object.create(TelegramDriver.prototype);
+  driver.selfId = 77;
+  driver.resolvePeer = id => id;
+  driver.client = {
+    getInputEntity: async () => peer,
+    invoke: async request => {
+      if (request instanceof Api.channels.GetParticipants) return { count: 0, participants: [], users: [] };
+      if (request instanceof Api.channels.GetParticipant) return { participant: new Api.ChannelParticipantBanned({
+        peer: new Api.PeerUser({ userId: bigInt(77) }), kickedBy: bigInt(1), date: 1,
+        bannedRights: new Api.ChatBannedRights({ inviteUsers: true }), left: false,
+      }) };
+      if (request instanceof Api.channels.GetFullChannel) return { fullChat: { defaultBannedRights: new Api.ChatBannedRights({}) } };
+      throw new Error(`unexpected ${request.className}`);
+    },
+  };
+  assert.equal((await driver.getParticipantsPage(-42)).selfPermissions.canInviteUsers, false);
+});
+
+test('restricted channel participants remain distinct from participants who left', () => {
+  const driver = Object.create(TelegramDriver.prototype);
+  const user = new Api.User({ id: bigInt(10), firstName: 'Restricted' });
+  const restricted = new Api.ChannelParticipantBanned({ peer: new Api.PeerUser({ userId: bigInt(10) }),
+    kickedBy: bigInt(1), date: 1, bannedRights: new Api.ChatBannedRights({ sendMessages: true }), left: false });
+  const left = new Api.ChannelParticipantBanned({ peer: new Api.PeerUser({ userId: bigInt(10) }),
+    kickedBy: bigInt(1), date: 1, bannedRights: new Api.ChatBannedRights({ viewMessages: true }), left: true });
+  const mapped = driver.mapParticipantEntities([{ ...user, participant: restricted }, { ...user, participant: left }], true);
+  assert.equal(mapped[0].role, 'banned');
+  assert.equal(Boolean(mapped[0].isLeft), false);
+  assert.equal(mapped[1].role, 'banned');
+  assert.equal(mapped[1].isLeft, true);
 });
 
 test('basic-group member pages filter IDs locally and paginate the Telegram roster', async () => {

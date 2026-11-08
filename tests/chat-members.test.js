@@ -231,3 +231,27 @@ test('a non-creator with ban rights does not get moderation actions for another 
   await load;
   assert.doesNotMatch(h.container.innerHTML, /openGroupMuteModal|openGroupBanModal|kickGroupMember/);
 });
+
+test('a restricted member still in the group remains a moderation target', async () => {
+  const h = setup();
+  const restricted = { ...person(10), role: 'banned', isLeft: false };
+  const load = h.context.loadGroupMembers(1);
+  h.requests[0].resolve({ count: 1, participants: [restricted], selfPermissions: {
+    isCreator: true, canBanUsers: true,
+  } });
+  await load;
+  assert.match(h.container.innerHTML, /openGroupMuteModal\(10/);
+  assert.match(h.container.innerHTML, /openGroupBanModal\(10/);
+  assert.match(h.container.innerHTML, /kickGroupMember\(10/);
+  h.context.openGroupMuteModal(10, 'User10');
+  assert.equal(h.elements.get('modal-group-member-mute').style.display, 'flex');
+});
+
+test('a member who left is not shown moderation actions even if their participant class is banned', async () => {
+  const h = setup();
+  const left = { ...person(10), role: 'banned', isLeft: true };
+  const load = h.context.loadGroupMembers(1);
+  h.requests[0].resolve({ count: 1, participants: [left], selfPermissions: { isCreator: true, canBanUsers: true } });
+  await load;
+  assert.doesNotMatch(h.container.innerHTML, /openGroupMuteModal|openGroupBanModal|kickGroupMember/);
+});

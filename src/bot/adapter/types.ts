@@ -288,6 +288,8 @@ export interface AdminPermissions {
 export interface ParticipantInfo {
   user: UserRef;
   role: 'owner' | 'admin' | 'member' | 'banned' | 'left';
+  /** Telegram may represent a restricted but still-present channel member as ChannelParticipantBanned. */
+  isLeft?: boolean;
   joinedDate?: number;
   kickedBy?: UserRef;
   promotedBy?: UserRef;
