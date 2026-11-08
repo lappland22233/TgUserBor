@@ -1785,7 +1785,8 @@ input:checked + .slider:before {
 .chat-album-sender { grid-column: 1 / -1; padding: 0 4px 2px; font-size: 11px; font-weight: 600; }
 .chat-album-group .chat-bubble-wrap { width: 100%; max-width: none; min-width: 0; margin: 0; align-self: stretch; }
 .chat-album-group .msg-row-inner { display: block; width: 100%; }
-.chat-album-group .msg-sender-avatar-wrap { display: none; }
+.chat-album-group .msg-sender-avatar-wrap,
+.chat-album-group .msg-sender-avatar-spacer { display: none; }
 .chat-album-group .msg-content-column { width: 100%; max-width: none; align-items: stretch; }
 .chat-album-group .chat-bubble { width: 100%; max-width: none; padding: 0; overflow: hidden; border: 0; border-radius: 8px; box-shadow: none; }
 .chat-album-group .chat-bubble::after { display: none; }
@@ -1823,6 +1824,15 @@ input:checked + .slider:before {
   margin-bottom: 2px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease;
+}
+
+.msg-sender-avatar-spacer {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .msg-sender-avatar-wrap:hover {
@@ -10963,13 +10973,13 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
 .app-container.telegram-client-mode #view-client .client-admin-menu,
 .app-container.telegram-client-mode #view-client .client-topbar-right > .btn {
   display: inline-flex;
-  flex: 0 0 40px;
+  flex: 0 0 36px;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -10985,42 +10995,439 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
 }
 
 .app-container.telegram-client-mode #view-client #client-account-select {
+  display: none !important;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker {
+  position: relative;
+  z-index: 30;
+  flex: 0 1 148px;
   width: 148px;
-  max-width: 148px;
-  min-width: 96px !important;
+  min-width: 96px;
+  max-width: 190px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
   height: 40px;
-  padding: 0 24px 0 8px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
   border: 0;
-  background-color: transparent;
-  background-position: right 8px center;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-trigger:hover,
+.app-container.telegram-client-mode #view-client .client-account-picker-trigger[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--client-muted) 12%, transparent);
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-trigger:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: 2px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-status {
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-container.telegram-client-mode #view-client .account-picker-chevron {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--client-muted);
+  transform: rotate(90deg);
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 80;
+  width: max-content;
+  min-width: min(248px, calc(100vw - 24px));
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(60vh, 360px);
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--client-surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-menu[hidden] {
+  display: none !important;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-option {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-option:hover,
+.app-container.telegram-client-mode #view-client .client-account-picker-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--client-accent) 18%, transparent);
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-option:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: -2px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-option .status-dot {
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-id,
+.app-container.telegram-client-mode #view-client .client-account-picker-state {
+  color: var(--client-muted);
+  font-size: 12px;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-picker-state {
+  flex: 0 0 auto;
+}
+
+.app-container.telegram-client-mode #view-client .client-account-select-native {
+  display: none !important;
+}
+
+.app-container.telegram-client-mode #view-client .members-header-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--client-surface);
+}
+
+.app-container.telegram-client-mode #view-client .members-search-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+}
+
+.app-container.telegram-client-mode #view-client .members-search-wrap input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px 0 38px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--client-search);
   color: var(--text-primary);
   font-size: 14px;
   box-shadow: none;
-  border-radius: 10px;
 }
 
-.app-container.telegram-client-mode #view-client #client-account-select:focus:not(:focus-visible) {
-  outline: none;
-  box-shadow: none;
+.app-container.telegram-client-mode #view-client .members-search-wrap input:focus {
+  border: 0;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--client-accent) 50%, transparent);
 }
 
-.app-container.telegram-client-mode #view-client #client-account-select:focus-visible {
-  outline: 2px solid var(--client-accent);
-  outline-offset: 2px;
-  box-shadow: none;
+.app-container.telegram-client-mode #view-client .members-search-wrap .search-icon {
+  left: 12px;
+  width: 18px;
+  height: 18px;
 }
 
-.app-container.telegram-client-mode #view-client #client-account-select option {
-  background: var(--client-surface);
+.app-container.telegram-client-mode #view-client #btn-refresh-members,
+.app-container.telegram-client-mode #view-client .members-toolbar-menu > summary {
+  display: flex;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--client-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-container.telegram-client-mode #view-client #btn-refresh-members:hover,
+.app-container.telegram-client-mode #view-client .members-toolbar-menu > summary:hover,
+.app-container.telegram-client-mode #view-client .members-toolbar-menu[open] > summary {
+  background: color-mix(in srgb, var(--client-muted) 12%, transparent);
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .app-container.telegram-client-mode #view-client #client-account-select {
-  color-scheme: dark;
+.app-container.telegram-client-mode #view-client .members-toolbar-menu,
+.app-container.telegram-client-mode #view-client .member-actions-menu {
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
 }
 
-[data-theme="light"] .app-container.telegram-client-mode #view-client #client-account-select {
-  color-scheme: light;
+.app-container.telegram-client-mode #view-client .members-toolbar-menu > summary,
+.app-container.telegram-client-mode #view-client .member-actions-menu > summary {
+  list-style: none;
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu > summary::-webkit-details-marker,
+.app-container.telegram-client-mode #view-client .member-actions-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu-list,
+.app-container.telegram-client-mode #view-client .member-actions-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 90;
+  display: none;
+  width: 220px;
+  max-width: calc(100vw - 24px);
+  max-height: min(60vh, 360px);
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--client-surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu[open] > .members-toolbar-menu-list,
+.app-container.telegram-client-mode #view-client .member-actions-menu[open] > .member-actions-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu-list > .btn,
+.app-container.telegram-client-mode #view-client .members-toolbar-menu-list > .btn[hidden],
+.app-container.telegram-client-mode #view-client .member-menu-action {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu-list > .btn[hidden] {
+  display: none !important;
+}
+
+.app-container.telegram-client-mode #view-client .members-toolbar-menu-list > .btn:hover,
+.app-container.telegram-client-mode #view-client .member-menu-action:hover {
+  background: color-mix(in srgb, var(--client-muted) 12%, transparent);
+}
+
+.app-container.telegram-client-mode #view-client .member-menu-action.danger {
+  color: var(--color-danger, #e05a5a);
+}
+
+.app-container.telegram-client-mode #view-client .members-list-body {
+  gap: 0;
+  padding: 6px 8px;
+  background: var(--client-surface);
+}
+
+.app-container.telegram-client-mode #view-client .member-item-card {
+  min-height: 72px;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  transition: background-color .15s ease;
+}
+
+.app-container.telegram-client-mode #view-client .member-item-card:hover,
+.app-container.telegram-client-mode #view-client .member-item-card:focus-within {
+  background: color-mix(in srgb, var(--client-muted) 10%, transparent);
+}
+
+.app-container.telegram-client-mode #view-client .member-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 60px;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-container.telegram-client-mode #view-client .member-main:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: 2px;
+}
+
+.app-container.telegram-client-mode #view-client .member-avatar {
+  position: relative;
+  display: flex;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.app-container.telegram-client-mode #view-client .member-avatar img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  opacity: 0;
+  object-fit: cover;
+  transition: opacity .15s ease;
+}
+
+.app-container.telegram-client-mode #view-client .member-avatar img.loaded {
+  opacity: 1;
+}
+
+.app-container.telegram-client-mode #view-client .member-avatar-initials {
+  position: relative;
+  z-index: 0;
+}
+
+.app-container.telegram-client-mode #view-client .member-text-meta {
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 3px;
+}
+
+.app-container.telegram-client-mode #view-client .member-name-row {
+  min-width: 0;
+  gap: 6px;
+}
+
+.app-container.telegram-client-mode #view-client .member-name {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.app-container.telegram-client-mode #view-client .member-badge {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.app-container.telegram-client-mode #view-client .member-subtext {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.app-container.telegram-client-mode #view-client .member-actions-menu > summary {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--client-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-container.telegram-client-mode #view-client .member-actions-menu > summary:hover,
+.app-container.telegram-client-mode #view-client .member-actions-menu[open] > summary {
+  background: color-mix(in srgb, var(--client-muted) 12%, transparent);
+  color: var(--text-primary);
+}
+
+.app-container.telegram-client-mode #view-client .member-list-footer {
+  min-height: 48px;
+  padding: 8px;
+  color: var(--client-muted);
+  font-size: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-container.telegram-client-mode #view-client .member-actions-menu {
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+
+  .app-container.telegram-client-mode #view-client .member-item-card:hover .member-actions-menu,
+  .app-container.telegram-client-mode #view-client .member-item-card:focus-within .member-actions-menu,
+  .app-container.telegram-client-mode #view-client .member-actions-menu[open] {
+    opacity: 1;
+  }
 }
 
 .app-container.telegram-client-mode #view-client .dialogs-header {
@@ -11524,10 +11931,43 @@ html[data-theme="dark"] .app-container.telegram-client-mode {
   }
 
   .app-container.telegram-client-mode #view-client #client-account-select {
-    width: 112px;
-    max-width: 112px;
-    min-width: 80px !important;
+    display: none !important;
+  }
+
+  .app-container.telegram-client-mode #view-client .client-account-picker {
+    flex: 1 1 148px;
+    width: auto;
+    min-width: 88px;
+    max-width: 190px;
+  }
+
+  .app-container.telegram-client-mode #view-client .client-account-picker-trigger {
+    gap: 6px;
+    padding-inline: 7px;
+  }
+
+  .app-container.telegram-client-mode #view-client .client-account-picker-label {
     font-size: 13px;
+  }
+
+  .app-container.telegram-client-mode #view-client .client-account-picker-menu {
+    min-width: min(220px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  .app-container.telegram-client-mode #view-client .client-topbar-left {
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .app-container.telegram-client-mode #view-client .members-header-bar {
+    gap: 2px;
+    padding-inline: 8px;
+  }
+
+  .app-container.telegram-client-mode #view-client .members-toolbar-menu-list {
+    right: 0;
+    width: min(220px, calc(100vw - 24px));
   }
 
   .app-container.telegram-client-mode #view-client .dialogs-header {

@@ -565,7 +565,15 @@
                     <svg class="ui-icon"><use href="#icon-menu"/></svg>
                   </button>
                   <label class="form-label" style="margin: 0; font-size: 13px;">选择账号:</label>
-                  <select class="select-control" id="client-account-select" style="min-width: 130px;">
+                  <div class="client-account-picker" id="client-account-picker">
+                    <button class="client-account-picker-trigger" id="client-account-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="client-account-picker-menu" disabled>
+                      <span class="client-account-picker-status status-dot stopped" id="client-account-picker-status"></span>
+                      <span class="client-account-picker-label" id="client-account-picker-label">加载中…</span>
+                      <svg class="ui-icon-xs account-picker-chevron" aria-hidden="true"><use href="#icon-chevron-right"/></svg>
+                    </button>
+                    <div class="client-account-picker-menu" id="client-account-picker-menu" role="listbox" aria-label="选择账号" hidden></div>
+                  </div>
+                  <select class="client-account-select-native" id="client-account-select" tabindex="-1" aria-hidden="true" hidden>
                     <option value="">加载中...</option>
                   </select>
                   <div class="client-account-badge" id="client-account-badge">
@@ -1148,11 +1156,16 @@
                     <svg class="ui-icon-xs search-icon"><use href="#icon-search"/></svg>
                     <input type="search" class="input-control input-sm" id="member-search-input" placeholder="搜索成员名称、用户名或 ID…" aria-label="搜索群成员">
                   </div>
-                  <button class="btn btn-secondary btn-xs" id="btn-add-group-members" type="button" hidden>添加成员</button>
-                  <button class="btn btn-secondary btn-xs" id="btn-view-join-requests" type="button">入群申请</button>
-                  <button class="btn btn-secondary btn-xs" id="btn-view-banned-members" type="button" hidden>封禁用户</button>
-                  <button class="btn btn-secondary btn-xs" id="btn-view-invite-links" type="button" hidden>邀请链接</button>
                   <button class="btn-icon-subtle" id="btn-refresh-members" title="刷新成员列表"><svg class="ui-icon-xs"><use href="#icon-refresh"/></svg></button>
+                  <details class="members-toolbar-menu">
+                    <summary title="成员管理操作" aria-label="成员管理操作"><svg class="ui-icon-sm"><use href="#icon-dots-vertical"/></svg></summary>
+                    <div class="members-toolbar-menu-list">
+                      <button class="btn btn-secondary btn-xs" id="btn-add-group-members" type="button" hidden>添加成员</button>
+                      <button class="btn btn-secondary btn-xs" id="btn-view-join-requests" type="button">入群申请</button>
+                      <button class="btn btn-secondary btn-xs" id="btn-view-banned-members" type="button" hidden>封禁用户</button>
+                      <button class="btn btn-secondary btn-xs" id="btn-view-invite-links" type="button" hidden>邀请链接</button>
+                    </div>
+                  </details>
                 </div>
                 <div class="members-list-body" id="members-list-container">
                   <div class="empty-hint">加载成员列表中...</div>

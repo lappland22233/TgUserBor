@@ -1719,6 +1719,7 @@ function initListeners() {
       void loadClientStoriesFeed(true);
     };
   }
+  initClientAccountPicker();
 
   // Mobile Back to Dialogs Button
   const btnClientBack = document.getElementById('btn-client-back-dialogs');
@@ -2124,6 +2125,24 @@ function initListeners() {
     if (event.target === groupMemberMuteModal) closeGroupMuteModal();
   });
   document.getElementById('btn-refresh-members')?.addEventListener('click', () => loadGroupMembers(state.clientActiveChatId));
+  const membersList = document.getElementById('members-list-container');
+  membersList?.addEventListener('click', event => {
+    if (event.target.closest('.member-menu-action')) {
+      const menu = event.target.closest('.member-actions-menu');
+      if (menu) menu.open = false;
+    }
+  });
+  document.addEventListener('click', event => {
+    if (event.target.closest('.member-actions-menu, .members-toolbar-menu')) return;
+    document.querySelectorAll('.member-actions-menu[open], .members-toolbar-menu[open]').forEach(menu => { menu.open = false; });
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const menu = document.querySelector('.member-actions-menu[open], .members-toolbar-menu[open]');
+    if (!menu) return;
+    menu.open = false;
+    menu.querySelector('summary')?.focus();
+  });
   document.getElementById('btn-view-join-requests')?.addEventListener('click', openJoinRequestsModal);
   document.getElementById('btn-view-banned-members')?.addEventListener('click', openBannedMembersModal);
   document.getElementById('btn-view-invite-links')?.addEventListener('click', openInviteLinksModal);
@@ -2507,6 +2526,105 @@ function filterRenderLogs() {
 // ==========================================
 // Web Client: Official Client-like Account Operations
 // ==========================================
+function initClientAccountPicker() {
+  const wrapper = document.getElementById('client-account-picker');
+  const trigger = document.getElementById('client-account-picker-trigger');
+  const menu = document.getElementById('client-account-picker-menu');
+  const select = document.getElementById('client-account-select');
+  if (!wrapper || !trigger || !menu || !select || wrapper.dataset.initialized === 'true') return;
+  wrapper.dataset.initialized = 'true';
+
+  const close = (restoreFocus = false) => {
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger.focus();
+  };
+  trigger.addEventListener('click', () => {
+    const open = menu.hidden;
+    menu.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    if (open) (menu.querySelector('[aria-selected="true"]') || menu.querySelector('[role="option"]'))?.focus();
+  });
+  menu.addEventListener('click', event => {
+    const option = event.target.closest('[role="option"][data-value]');
+    if (!option) return;
+    if (select.value !== option.dataset.value) {
+      select.value = option.dataset.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    close(true);
+  });
+  menu.addEventListener('keydown', event => {
+    const options = Array.from(menu.querySelectorAll('[role="option"]'));
+    if (!options.length) return;
+    const current = options.indexOf(document.activeElement);
+    let next = null;
+    if (event.key === 'ArrowDown') next = (current + 1) % options.length;
+    else if (event.key === 'ArrowUp') next = (current <= 0 ? options.length : current) - 1;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = options.length - 1;
+    if (next !== null) {
+      event.preventDefault();
+      options[next].focus();
+    }
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!wrapper.contains(event.target)) close();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !menu.hidden) close(true);
+  });
+  updateClientAccountPicker();
+}
+
+function updateClientAccountPicker() {
+  const trigger = document.getElementById('client-account-picker-trigger');
+  const label = document.getElementById('client-account-picker-label');
+  const statusDot = document.getElementById('client-account-picker-status');
+  const menu = document.getElementById('client-account-picker-menu');
+  if (!trigger || !label || !statusDot || !menu) return;
+
+  const instances = Array.isArray(state.instances) ? state.instances : [];
+  const selected = instances.find(instance => instance.config?.id === state.clientSelectedInstance);
+  trigger.disabled = instances.length === 0;
+  label.textContent = selected?.config?.name || (instances.length ? '选择账号' : '无可用实例');
+  const selectedState = selected?.status === 'ONLINE' ? '在线' : (selected?.status || '离线');
+  trigger.title = selected ? `${selected.config.name} (${selected.config.id}) · ${selectedState}` : '无可用实例';
+  trigger.setAttribute('aria-label', selected ? `切换账号，当前 ${selected.config.name}，${selectedState}` : '无可用实例');
+  statusDot.className = `client-account-picker-status status-dot ${selected?.status === 'ONLINE' ? 'running' : 'stopped'}`;
+  menu.replaceChildren();
+
+  instances.forEach((instance, index) => {
+    const id = String(instance.config?.id || '');
+    const name = String(instance.config?.name || id || 'Telegram');
+    const online = instance.status === 'ONLINE';
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'client-account-picker-option';
+    option.dataset.value = id;
+    option.id = `client-account-option-${index}`;
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(id === state.clientSelectedInstance));
+
+    const dot = document.createElement('span');
+    dot.className = `status-dot ${online ? 'running' : 'stopped'}`;
+    const copy = document.createElement('span');
+    copy.className = 'client-account-picker-copy';
+    const title = document.createElement('span');
+    title.className = 'client-account-picker-name';
+    title.textContent = name;
+    const secondary = document.createElement('span');
+    secondary.className = 'client-account-picker-id';
+    secondary.textContent = id;
+    copy.append(title, secondary);
+    const stateLabel = document.createElement('span');
+    stateLabel.className = 'client-account-picker-state';
+    stateLabel.textContent = online ? '在线' : (instance.status || '离线');
+    option.append(dot, copy, stateLabel);
+    menu.appendChild(option);
+  });
+}
+
 async function initClientView() {
   const select = document.getElementById('client-account-select');
   if (!select) return;
@@ -2518,6 +2636,7 @@ async function initClientView() {
     state.clientSelectedInstance = null;
     select.innerHTML = '<option value="">无可用实例</option>';
     document.getElementById('client-account-name').innerText = '暂无实例';
+    updateClientAccountPicker();
     startClientDialogSearch();
     window.DialogFolders?.load();
     window.GlobalMessageSearch?.reset();
@@ -2551,6 +2670,7 @@ async function initClientView() {
 }
 
 function updateClientAccountBadge() {
+  updateClientAccountPicker();
   const inst = state.instances.find((i) => i.config.id === state.clientSelectedInstance);
   const badgeDot = document.querySelector('#client-account-badge .status-dot');
   const badgeName = document.getElementById('client-account-name');
@@ -4996,6 +5116,7 @@ function renderClientMessages(preserveScroll = false) {
         <button type="button" class="quick-react-btn" onclick="event.stopPropagation(); quickToggleReaction(${inlineJsArg(m.id)}, '😂')">😂</button>
       </div>
       <div class="msg-row-inner">
+        ${!isOut && senderId && !meta.isLastInGroup ? '<div class="msg-sender-avatar-spacer" aria-hidden="true"></div>' : ''}
         ${!isOut && senderId && meta.isLastInGroup ? `
           <div class="msg-sender-avatar-wrap" onclick="event.stopPropagation(); loadPeerProfile(${inlineJsArg(senderId)})" title="${escapeHtml(senderName)} (点击查看资料)">
             <img class="msg-sender-avatar-img" data-network-src="${escapeHtml(avatarUrl)}" alt="" loading="lazy"
@@ -7582,7 +7703,27 @@ async function loadPeerProfile(chatId) {
   if (historyTtlStatus) historyTtlStatus.textContent = '正在读取 Telegram 计时器…';
   const heroPlaceholder = document.getElementById('profile-hero-placeholder');
 
-  const activeChat = state.clientDialogs.find((d) => d.id === chatId);
+  const activeChat = state.clientDialogs.find((d) => String(d.id) === String(chatId)) ||
+    (String(state.clientActiveChatId) === String(chatId) && String(state.clientActiveDialog?.id) === String(chatId)
+      ? state.clientActiveDialog : null);
+  const tabMembersBtn = document.getElementById('tab-btn-members');
+  const isActiveGroupOrChannel = String(state.clientActiveChatId) === String(chatId) &&
+    ['group', 'supergroup', 'channel'].includes(activeChat?.type);
+  if (tabMembersBtn) {
+    tabMembersBtn.style.display = isActiveGroupOrChannel ? 'inline-flex' : 'none';
+    if (isActiveGroupOrChannel) {
+      const count = activeChat.participantsCount ?? activeChat.membersCount ?? activeChat.subscribersCount ?? 0;
+      tabMembersBtn.innerText = `成员 (${count})`;
+      if (tabMembersBtn.classList?.contains?.('active')) void loadGroupMembers(chatId);
+    } else if (tabMembersBtn.classList?.contains?.('active')) {
+      const membersPane = document.getElementById('drawer-tab-members');
+      if (membersPane) membersPane.style.display = 'none';
+      const profilePane = document.getElementById('drawer-tab-profile');
+      if (profilePane) profilePane.style.display = 'block';
+      document.getElementById('tab-btn-profile')?.classList?.add?.('active');
+      tabMembersBtn.classList.remove('active');
+    }
+  }
   const initials = (activeChat?.title || activeChat?.username || 'TG').slice(0, 2);
   if (heroPlaceholder) heroPlaceholder.innerText = initials;
 
@@ -7652,11 +7793,17 @@ async function loadPeerProfile(chatId) {
     }
 
     const tabMembersBtn = document.getElementById('tab-btn-members');
-    const isGroupOrChannel = Boolean(p.isGroup || p.isChannel || p.type === 'group' || p.type === 'supergroup' || p.type === 'channel' || activeChat?.type === 'group' || activeChat?.type === 'supergroup' || activeChat?.type === 'channel');
+    const profileIsGroupOrChannel = Boolean(p.isGroup || p.isChannel || ['group', 'supergroup', 'channel'].includes(p.type));
+    const activeChatMatchesProfile = String(activeChat?.id) === String(chatId);
+    const isGroupOrChannel = profileIsGroupOrChannel ||
+      (activeChatMatchesProfile && ['group', 'supergroup', 'channel'].includes(activeChat?.type));
     if (tabMembersBtn) {
       if (isGroupOrChannel) {
         tabMembersBtn.style.display = 'inline-flex';
-        tabMembersBtn.innerText = `成员 (${participantCount || 0})`;
+        const count = participantCount ?? (activeChatMatchesProfile
+          ? activeChat.participantsCount ?? activeChat.membersCount ?? activeChat.subscribersCount
+          : undefined) ?? 0;
+        tabMembersBtn.innerText = `成员 (${count})`;
       } else {
         tabMembersBtn.style.display = 'none';
         const mbPane = document.getElementById('drawer-tab-members');
@@ -9740,38 +9887,44 @@ function renderGroupMembers() {
   for (const item of list) {
     const u = item.user || {};
     const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || `UID:${u.id}`;
-    const initials = (u.firstName || u.username || 'U').slice(0, 2);
+    const initials = Array.from(u.firstName || u.username || 'U').slice(0, 2).join('');
     const usernameStr = u.username ? `@${u.username}` : `ID: ${u.id}`;
+    const avatarUrl = `/api/instances/${encodeURIComponent(state.clientSelectedInstance)}/account/avatar?chatId=${encodeURIComponent(u.id)}`;
 
     let roleBadgeHtml = '';
     if (item.role === 'owner') {
-      roleBadgeHtml = '<span class="member-badge owner" title="群主">👑 群主</span>';
+      roleBadgeHtml = '<span class="member-badge owner" title="群主">群主</span>';
     } else if (item.role === 'admin') {
-      roleBadgeHtml = '<span class="member-badge admin" title="管理员">⭐ 管理员</span>';
+      roleBadgeHtml = '<span class="member-badge admin" title="管理员">管理员</span>';
     } else if (u.isBot) {
-      roleBadgeHtml = '<span class="member-badge bot" title="机器人">🤖 Bot</span>';
+      roleBadgeHtml = '<span class="member-badge bot" title="机器人">Bot</span>';
     }
 
     html += `
       <div class="member-item-card">
-        <div class="member-info-group">
-          <div class="member-avatar">${escapeHtml(initials)}</div>
-          <div class="member-text-meta">
-            <div class="member-name-row">
+        <button class="member-main" type="button" onclick="loadPeerProfile(${inlineJsArg(u.id)})" title="查看 ${escapeHtml(fullName)} 的资料">
+          <span class="member-avatar">
+            <img data-network-src="${escapeHtml(avatarUrl)}" alt="" loading="lazy" onload="this.classList.add('loaded')" onerror="this.remove()">
+            <span class="member-avatar-initials">${escapeHtml(initials)}</span>
+          </span>
+          <span class="member-text-meta">
+            <span class="member-name-row">
               <span class="member-name" title="${escapeHtml(fullName)}">${escapeHtml(fullName)}</span>
               ${roleBadgeHtml}
-            </div>
-            <div class="member-subtext">${escapeHtml(usernameStr)}</div>
+            </span>
+            <span class="member-subtext">${escapeHtml(usernameStr)}</span>
+          </span>
+        </button>
+        <details class="member-actions-menu">
+          <summary aria-label="${escapeHtml(`管理 ${fullName}`)}" title="成员操作"><svg class="ui-icon-sm"><use href="#icon-dots-vertical"/></svg></summary>
+          <div class="member-actions-menu-list">
+            <button type="button" class="member-menu-action" onclick="startDirectChat(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">发起私聊</button>
+            ${item.role !== 'owner' ? `<button type="button" class="member-menu-action" onclick="manageGroupAdmin(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">${item.role === 'admin' ? (item.supportsCustomAdminRights ? '管理管理员权限' : '撤销管理员') : '设为管理员'}</button>` : ''}
+            ${item.supportsCustomAdminRights ? `<button type="button" class="member-menu-action" onclick="openGroupMuteModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">设置禁言时长</button>` : ''}
+            ${item.supportsCustomAdminRights && item.role !== 'owner' ? `<button type="button" class="member-menu-action danger" onclick="openGroupBanModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">封禁此成员</button>` : ''}
+            <button type="button" class="member-menu-action danger" onclick="kickGroupMember(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})">移出群组</button>
           </div>
-        </div>
-        <div class="member-actions">
-          <button class="btn btn-secondary btn-xs" onclick="loadPeerProfile(${inlineJsArg(u.id)})" title="查看成员资料">资料</button>
-          <button class="btn btn-secondary btn-xs" onclick="startDirectChat(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})" title="发起私聊">私聊</button>
-          ${item.role !== 'owner' ? `<button class="btn btn-secondary btn-xs" onclick="manageGroupAdmin(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})" title="${item.role === 'admin' ? '管理管理员权限' : '设为管理员'}">${item.role === 'admin' ? (item.supportsCustomAdminRights ? '权限' : '撤销管理员') : '设为管理员'}</button>` : ''}
-          ${item.supportsCustomAdminRights ? `<button class="btn btn-secondary btn-xs" onclick="openGroupMuteModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})" title="设置禁言时长">禁言</button>` : ''}
-          ${item.supportsCustomAdminRights && item.role !== 'owner' ? `<button class="btn btn-danger btn-xs" onclick="openGroupBanModal(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})" title="封禁此成员">封禁</button>` : ''}
-          <button class="btn btn-danger btn-xs" onclick="kickGroupMember(${inlineJsArg(u.id)}, ${inlineJsArg(fullName)})" title="移出群组">踢出</button>
-        </div>
+        </details>
       </div>
     `;
   }

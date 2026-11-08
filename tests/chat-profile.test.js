@@ -39,12 +39,26 @@ test('older profile results cannot overwrite a newer profile', async () => {
 
 test('a group profile displays the adapter member count and group status', async () => {
   const h = harness();
+  h.state.clientActiveChatId = 1;
+  h.state.clientDialogs = [{ id: 1, type: 'group', title: 'Group', membersCount: 23 }];
   const profile = h.context.loadPeerProfile(1);
+  assert.equal(h.element('tab-btn-members').style.display, 'inline-flex');
   h.requests[0].resolve({ id: 1, title: 'Group', type: 'group', memberCount: 23 });
   await profile;
   assert.equal(h.element('profile-val-members').innerText, '23 位成员');
   assert.equal(h.element('profile-status-badge').innerText, '群组');
   assert.equal(h.element('tab-btn-members').innerText, '成员 (23)');
+});
+
+test('a member profile does not expose the active group chat members tab', async () => {
+  const h = harness();
+  h.state.clientActiveChatId = 1;
+  h.state.clientDialogs = [{ id: 1, type: 'supergroup', title: 'Group', membersCount: 23 }];
+  const profile = h.context.loadPeerProfile(2);
+  assert.equal(h.element('tab-btn-members').style.display, 'none');
+  h.requests[0].resolve({ id: 2, title: 'Member', type: 'private' });
+  await profile;
+  assert.equal(h.element('tab-btn-members').style.display, 'none');
 });
 
 test('switching away and back does not revive stale profile or stories requests', async () => {
