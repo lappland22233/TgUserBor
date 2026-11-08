@@ -55,6 +55,7 @@ test('megagroups are classified as groups and retain their public username', asy
     id: -10042,
     entity: { className: 'Channel', id: 42, title: 'Public group', username: 'public_group', megagroup: true },
     isChannel: true,
+    isGroup: true,
     unreadCount: 0,
   }] };
   const [dialog] = await driver.getDialogs();

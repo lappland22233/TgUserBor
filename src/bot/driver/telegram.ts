@@ -2029,16 +2029,18 @@ export class TelegramDriver implements BotAdapter {
           if (typeof entity.joinRequest === 'boolean') joinRequest = entity.joinRequest;
 
           try {
-            const fullChat = entity.className === 'Chat'
+            const fullChatResponse = entity.className === 'Chat'
               ? await this.client.invoke(new Api.messages.GetFullChat({ chatId: entity.id })) as any
               : await this.client.invoke(new Api.channels.GetFullChannel({ channel: peer })) as any;
-            const full = fullChat?.fullChat;
+            const full = fullChatResponse?.fullChat;
             if (full) {
               bio = full.about;
               memberCount = full.participantsCount ?? full.participants?.participants?.length ?? entity.participantsCount;
               pinnedMsgId = full.pinnedMsgId;
               ttlPeriod = Number.isSafeInteger(full.ttlPeriod) && full.ttlPeriod >= 0 ? full.ttlPeriod : 0;
-              const rawRights = full.defaultBannedRights;
+              const matchingChat = (Array.isArray(fullChatResponse?.chats) ? fullChatResponse.chats : [])
+                .find((chat: any) => String(chat?.id ?? '') === String(entity.id));
+              const rawRights = entity.defaultBannedRights || matchingChat?.defaultBannedRights;
               if (rawRights && rawRights.className === 'ChatBannedRights') {
                 defaultBannedRights = Object.fromEntries(CHAT_DEFAULT_BANNED_RIGHT_KEYS.map(key => [key, Boolean(rawRights[key])])) as unknown as ChatDefaultBannedRights;
               }
@@ -3593,7 +3595,9 @@ export class TelegramDriver implements BotAdapter {
           this.client.invoke(new Api.channels.GetParticipant({ channel, participant: new Api.InputUserSelf() })),
           this.client.invoke(new Api.channels.GetFullChannel({ channel })),
         ]);
-        return mapRole(response?.participant || response, fullChannel?.fullChat?.defaultBannedRights);
+        const channelEntity = (Array.isArray(fullChannel?.chats) ? fullChannel.chats : [])
+          .find((chat: any) => String(chat?.id ?? '') === String((channel as any).channelId ?? ''));
+        return mapRole(response?.participant || response, channelEntity?.defaultBannedRights);
       }
       if (peer instanceof Api.InputPeerChat) {
         const response: any = await this.client.invoke(new Api.messages.GetFullChat({ chatId: peer.chatId }));
@@ -3601,7 +3605,9 @@ export class TelegramDriver implements BotAdapter {
         const self = roster?.selfParticipant || (Array.isArray(roster?.participants)
           ? roster.participants.find((item: any) => Number(item?.userId?.toString?.() ?? item?.userId) === this.selfId)
           : undefined);
-        return mapRole(self, response?.fullChat?.defaultBannedRights, true);
+        const chatEntity = (Array.isArray(response?.chats) ? response.chats : [])
+          .find((chat: any) => String(chat?.id ?? '') === String(peer.chatId));
+        return mapRole(self, chatEntity?.defaultBannedRights, true);
       }
     } catch {
       // Hide actions when Telegram cannot confirm the current account's rights.
@@ -4486,8 +4492,8 @@ export class TelegramDriver implements BotAdapter {
       // GramJS marks both broadcast channels and megagroups as isChannel. The
       // concrete Telegram entity carries the distinction needed by the client.
       if (d.isUser || (entity as any).className === 'User') type = 'private';
-      else if ((entity as any).className === 'Chat' || d.isGroup) type = 'group';
       else if ((entity as any).className === 'Channel') type = (entity as any).megagroup ? 'supergroup' : 'channel';
+      else if ((entity as any).className === 'Chat' || d.isGroup) type = 'group';
       else if (d.isChannel) type = 'channel';
 
       // Format last message preview and sender

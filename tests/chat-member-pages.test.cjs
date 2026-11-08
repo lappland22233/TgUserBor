@@ -22,7 +22,10 @@ test('channel member pages use Telegram search, native offsets, and map particip
         userId: bigInt(77), promotedBy: bigInt(1), date: 1,
         adminRights: new Api.ChatAdminRights({ banUsers: true, inviteUsers: true, addAdmins: true }),
       }) };
-      if (request instanceof Api.channels.GetFullChannel) return { fullChat: { defaultBannedRights: new Api.ChatBannedRights({}) } };
+      if (request instanceof Api.channels.GetFullChannel) return { fullChat: {}, chats: [new Api.Channel({
+        id: bigInt(42), title: 'Group', photo: new Api.ChatPhotoEmpty(), date: 1,
+        megagroup: true, defaultBannedRights: new Api.ChatBannedRights({}),
+      })] };
       return {
         count: 60,
         users: [new Api.User({ id: bigInt(10), firstName: 'Ada', username: 'ada' })],
@@ -65,9 +68,15 @@ test('ordinary members can invite only when both default and individual rights a
       invoke: async request => {
         if (request instanceof Api.channels.GetParticipants) return { count: 0, participants: [], users: [] };
         if (request instanceof Api.channels.GetParticipant) return { participant: new Api.ChannelParticipant({ userId: bigInt(77), date: 1 }) };
-        if (request instanceof Api.channels.GetFullChannel) return { fullChat: {
-          defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: defaultInviteBanned }),
-        } };
+        if (request instanceof Api.channels.GetFullChannel) return {
+          // The fullChannel result carries the rights on its matching Channel entity.
+          // A similarly named field on fullChat is not part of Telegram's schema.
+          fullChat: { defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: false }) },
+          chats: [new Api.Channel({ id: bigInt(999), title: 'Other', photo: new Api.ChatPhotoEmpty(), date: 1,
+            megagroup: true, defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: false }) }),
+          new Api.Channel({ id: bigInt(42), title: 'Group', photo: new Api.ChatPhotoEmpty(), date: 1,
+            megagroup: true, defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: defaultInviteBanned }) })],
+        };
         throw new Error(`unexpected ${request.className}`);
       },
     };
@@ -88,11 +97,43 @@ test('ordinary members can invite only when both default and individual rights a
         peer: new Api.PeerUser({ userId: bigInt(77) }), kickedBy: bigInt(1), date: 1,
         bannedRights: new Api.ChatBannedRights({ inviteUsers: true }), left: false,
       }) };
-      if (request instanceof Api.channels.GetFullChannel) return { fullChat: { defaultBannedRights: new Api.ChatBannedRights({}) } };
+      if (request instanceof Api.channels.GetFullChannel) return { fullChat: {}, chats: [new Api.Channel({
+        id: bigInt(42), title: 'Group', photo: new Api.ChatPhotoEmpty(), date: 1,
+        megagroup: true, defaultBannedRights: new Api.ChatBannedRights({}),
+      })] };
       throw new Error(`unexpected ${request.className}`);
     },
   };
   assert.equal((await driver.getParticipantsPage(-42)).selfPermissions.canInviteUsers, false);
+});
+
+test('basic-group invitation rights come from the matching Chat entity', async () => {
+  const peer = new Api.InputPeerChat({ chatId: bigInt(42) });
+  const read = async defaultInviteBanned => {
+    const driver = Object.create(TelegramDriver.prototype);
+    driver.selfId = 77;
+    driver.resolvePeer = id => id;
+    driver.client = {
+      getInputEntity: async () => peer,
+      getParticipants: async () => [],
+      invoke: async request => {
+        assert.ok(request instanceof Api.messages.GetFullChat);
+        return {
+          fullChat: {
+            defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: !defaultInviteBanned }),
+            participants: { selfParticipant: new Api.ChatParticipant({ userId: bigInt(77), date: 1 }) },
+          },
+          chats: [
+            { className: 'Chat', id: bigInt(999), defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: !defaultInviteBanned }) },
+            { className: 'Chat', id: bigInt(42), defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: defaultInviteBanned }) },
+          ],
+        };
+      },
+    };
+    return (await driver.getParticipantsPage(-42)).selfPermissions;
+  };
+  assert.equal((await read(false)).canInviteUsers, true);
+  assert.equal((await read(true)).canInviteUsers, false);
 });
 
 test('restricted channel participants remain distinct from participants who left', () => {
@@ -128,7 +169,7 @@ test('basic-group member pages filter IDs locally and paginate the Telegram rost
       assert.ok(request instanceof Api.messages.GetFullChat);
       return { fullChat: { participants: { participants: [new Api.ChatParticipantAdmin({
         userId: bigInt(77), inviterId: bigInt(1), date: 1,
-      })] } } };
+      })] } }, chats: [{ className: 'Chat', id: bigInt(42), defaultBannedRights: new Api.ChatBannedRights({}) }] };
     },
   };
   assert.deepEqual(await driver.getParticipantsPage(-42, 0, 1, '11'), {
