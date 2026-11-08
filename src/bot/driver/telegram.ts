@@ -2029,16 +2029,18 @@ export class TelegramDriver implements BotAdapter {
           if (typeof entity.joinRequest === 'boolean') joinRequest = entity.joinRequest;
 
           try {
-            const fullChat = entity.className === 'Chat'
+            const fullChatResponse = entity.className === 'Chat'
               ? await this.client.invoke(new Api.messages.GetFullChat({ chatId: entity.id })) as any
               : await this.client.invoke(new Api.channels.GetFullChannel({ channel: peer })) as any;
-            const full = fullChat?.fullChat;
+            const full = fullChatResponse?.fullChat;
             if (full) {
               bio = full.about;
               memberCount = full.participantsCount ?? full.participants?.participants?.length ?? entity.participantsCount;
               pinnedMsgId = full.pinnedMsgId;
               ttlPeriod = Number.isSafeInteger(full.ttlPeriod) && full.ttlPeriod >= 0 ? full.ttlPeriod : 0;
-              const rawRights = full.defaultBannedRights;
+              const matchingChat = (Array.isArray(fullChatResponse?.chats) ? fullChatResponse.chats : [])
+                .find((chat: any) => String(chat?.id ?? '') === String(entity.id));
+              const rawRights = entity.defaultBannedRights || matchingChat?.defaultBannedRights;
               if (rawRights && rawRights.className === 'ChatBannedRights') {
                 defaultBannedRights = Object.fromEntries(CHAT_DEFAULT_BANNED_RIGHT_KEYS.map(key => [key, Boolean(rawRights[key])])) as unknown as ChatDefaultBannedRights;
               }
@@ -3547,6 +3549,7 @@ export class TelegramDriver implements BotAdapter {
       res.push({
         user,
         role,
+        ...(pClass.includes('Left') || (pClass.includes('Banned') && Boolean(participant?.left)) ? { isLeft: true } : {}),
         joinedDate: participant?.date,
         supportsCustomAdminRights,
         adminPermissions: participant?.adminRights ? {
@@ -3564,6 +3567,54 @@ export class TelegramDriver implements BotAdapter {
     return res;
   }
 
+  private async getSelfMemberActionPermissions(chatId: number, peer: Api.TypeInputPeer): Promise<NonNullable<ParticipantsPage['selfPermissions']>> {
+    const noPermissions = { isCreator: false, canInviteUsers: false, canBanUsers: false, canAddAdmins: false };
+    const mapRole = (participant: any, defaultBannedRights: any, basicGroup = false) => {
+      const className = String(participant?.className || '');
+      const isCreator = className.includes('Creator');
+      const isAdmin = isCreator || className.includes('Admin');
+      const isLeft = className.includes('Left') || (className.includes('Banned') && Boolean(participant?.left));
+      const isParticipant = className.includes('Participant') && !isLeft;
+      const rights = participant?.adminRights;
+      const inviteBannedByDefault = Boolean(defaultBannedRights?.inviteUsers);
+      const inviteBannedIndividually = Boolean(participant?.bannedRights?.inviteUsers);
+      return {
+        isCreator,
+        canInviteUsers: isCreator || (isAdmin
+          ? basicGroup || Boolean(rights?.inviteUsers)
+          : isParticipant && !inviteBannedByDefault && !inviteBannedIndividually),
+        canBanUsers: isCreator || (isAdmin && (basicGroup || Boolean(rights?.banUsers))),
+        canAddAdmins: isCreator || Boolean(rights?.addAdmins),
+      };
+    };
+
+    try {
+      if (peer instanceof Api.InputPeerChannel) {
+        const channel = await this.resolveAdminInputChannel(chatId);
+        const [response, fullChannel]: [any, any] = await Promise.all([
+          this.client.invoke(new Api.channels.GetParticipant({ channel, participant: new Api.InputUserSelf() })),
+          this.client.invoke(new Api.channels.GetFullChannel({ channel })),
+        ]);
+        const channelEntity = (Array.isArray(fullChannel?.chats) ? fullChannel.chats : [])
+          .find((chat: any) => String(chat?.id ?? '') === String((channel as any).channelId ?? ''));
+        return mapRole(response?.participant || response, channelEntity?.defaultBannedRights);
+      }
+      if (peer instanceof Api.InputPeerChat) {
+        const response: any = await this.client.invoke(new Api.messages.GetFullChat({ chatId: peer.chatId }));
+        const roster = response?.fullChat?.participants;
+        const self = roster?.selfParticipant || (Array.isArray(roster?.participants)
+          ? roster.participants.find((item: any) => Number(item?.userId?.toString?.() ?? item?.userId) === this.selfId)
+          : undefined);
+        const chatEntity = (Array.isArray(response?.chats) ? response.chats : [])
+          .find((chat: any) => String(chat?.id ?? '') === String(peer.chatId));
+        return mapRole(self, chatEntity?.defaultBannedRights, true);
+      }
+    } catch {
+      // Hide actions when Telegram cannot confirm the current account's rights.
+    }
+    return noPermissions;
+  }
+
   async getParticipantsPage(chatId: number, offset = 0, limit = 50, query = ''): Promise<ParticipantsPage> {
     if (!Number.isSafeInteger(chatId) || chatId >= 0 || !Number.isSafeInteger(offset) || offset < 0 || offset > 2147483647 ||
         !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || typeof query !== 'string' || query.length > 128) {
@@ -3574,13 +3625,16 @@ export class TelegramDriver implements BotAdapter {
     const trimmedQuery = query.trim();
 
     if (inputPeer instanceof Api.InputPeerChannel) {
-      const response: any = await this.client.invoke(new Api.channels.GetParticipants({
-        channel: inputPeer,
-        filter: new Api.ChannelParticipantsSearch({ q: trimmedQuery }),
-        offset,
-        limit,
-        hash: bigInt.zero,
-      }));
+      const [response, selfPermissions] = await Promise.all([
+        this.client.invoke(new Api.channels.GetParticipants({
+          channel: inputPeer,
+          filter: new Api.ChannelParticipantsSearch({ q: trimmedQuery }),
+          offset,
+          limit,
+          hash: bigInt.zero,
+        })) as Promise<any>,
+        this.getSelfMemberActionPermissions(chatId, inputPeer),
+      ]);
       const users = new Map<string, any>();
       for (const user of response.users || []) users.set(String(user.id), user);
       const entities = (response.participants || []).flatMap((participant: any) => {
@@ -3591,13 +3645,16 @@ export class TelegramDriver implements BotAdapter {
       const participants = this.mapParticipantEntities(entities, true);
       const count = Math.max(0, Number(response.count) || 0);
       const nextOffset = offset + (response.participants?.length || 0);
-      return { count, participants, ...(nextOffset < count && response.participants?.length ? { nextOffset } : {}) };
+      return { count, participants, selfPermissions, ...(nextOffset < count && response.participants?.length ? { nextOffset } : {}) };
     }
 
     if (inputPeer instanceof Api.InputPeerChat) {
       // Basic groups do not expose a server-side participant search endpoint. Telegram
       // returns their full roster, so filter it locally and paginate the matching rows.
-      const all = await this.client.getParticipants(peer, { limit: Number.MAX_SAFE_INTEGER });
+      const [all, selfPermissions] = await Promise.all([
+        this.client.getParticipants(peer, { limit: Number.MAX_SAFE_INTEGER }),
+        this.getSelfMemberActionPermissions(chatId, inputPeer),
+      ]);
       const normalizedQuery = trimmedQuery.toLocaleLowerCase();
       const filtered = normalizedQuery ? all.filter((entry: any) => {
         const user = userFromEntity(entry);
@@ -3608,7 +3665,7 @@ export class TelegramDriver implements BotAdapter {
       const page = filtered.slice(offset, offset + limit) as any[];
       const participants = this.mapParticipantEntities(page, false);
       const nextOffset = offset + page.length;
-      return { count: filtered.length, participants, ...(nextOffset < filtered.length && page.length ? { nextOffset } : {}) };
+      return { count: filtered.length, participants, selfPermissions, ...(nextOffset < filtered.length && page.length ? { nextOffset } : {}) };
     }
 
     throw new Error('只能读取群组或频道成员');
@@ -4432,8 +4489,11 @@ export class TelegramDriver implements BotAdapter {
       const rawId = d.id ? d.id.toString() : (entity as any).id.toString();
       const id = Number(rawId);
       let type: ChatType = 'unknown';
-      if (d.isUser) type = 'private';
-      else if (d.isGroup) type = 'group';
+      // GramJS marks both broadcast channels and megagroups as isChannel. The
+      // concrete Telegram entity carries the distinction needed by the client.
+      if (d.isUser || (entity as any).className === 'User') type = 'private';
+      else if ((entity as any).className === 'Channel') type = (entity as any).megagroup ? 'supergroup' : 'channel';
+      else if ((entity as any).className === 'Chat' || d.isGroup) type = 'group';
       else if (d.isChannel) type = 'channel';
 
       // Format last message preview and sender
@@ -4451,7 +4511,7 @@ export class TelegramDriver implements BotAdapter {
         type,
         isSelf: Boolean(this.selfId && id === this.selfId),
         title: d.title || (entity as any).username || (entity as any).firstName,
-        username: (entity as any).username,
+        username: (entity as any).username || undefined,
         unreadCount: d.unreadCount,
         lastMessageId: d.message?.id,
         pinned: d.pinned,
@@ -4678,7 +4738,7 @@ export class TelegramDriver implements BotAdapter {
       if (!(item instanceof Api.Channel) || !item.megagroup) return undefined;
       const id = Number(getPeerId(new Api.PeerChannel({ channelId: item.id })));
       return Number.isSafeInteger(id) && id < 0
-        ? { id, title: String(item.title || '').slice(0, 256), ...(Number.isSafeInteger(item.participantsCount) ? { membersCount: item.participantsCount } : {}) }
+        ? { id, title: String(item.title || '').slice(0, 256), ...(typeof item.username === 'string' && item.username ? { username: item.username } : {}), ...(Number.isSafeInteger(item.participantsCount) ? { membersCount: item.participantsCount } : {}) }
         : undefined;
     };
     const groups = new Map<number, NonNullable<ReturnType<typeof toGroup>>>();

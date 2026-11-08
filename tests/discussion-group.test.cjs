@@ -30,20 +30,23 @@ function makeDriver(channels, invoke) {
 
 test('discussion group lookup maps the current link and only Telegram-provided supergroup choices', async () => {
   const channel = makeChannel(111, 'News', { broadcast: true });
-  const linked = makeChannel(222, 'Discussion', { megagroup: true, participantsCount: 15 });
-  const candidate = makeChannel(333, 'Community', { megagroup: true, participantsCount: 30 });
+  const linked = makeChannel(222, 'Discussion', { megagroup: true, username: 'discussion', participantsCount: 15 });
+  const candidate = makeChannel(333, 'Community', { megagroup: true, username: 'community', participantsCount: 30 });
+  const notAvailableToThisAccount = makeChannel(555, 'Not manageable', { megagroup: true, username: 'not_manageable' });
   const ordinaryChannel = makeChannel(444, 'Announcements', { broadcast: true });
   const requests = [];
   const driver = makeDriver(new Map([['111', channel], ['222', linked], ['333', candidate]]), async request => {
     requests.push(request);
-    if (request.className === 'channels.GetFullChannel') return { fullChat: { linkedChatId: bigInt(222) }, chats: [linked] };
+    if (request.className === 'channels.GetFullChannel') return { fullChat: { linkedChatId: bigInt(222) }, chats: [linked, notAvailableToThisAccount] };
     if (request.className === 'channels.GetGroupsForDiscussion') return { chats: [candidate, ordinaryChannel] };
     throw new Error(`unexpected ${request.className}`);
   });
   const state = await driver.getDiscussionGroupState(-100111);
-  assert.deepEqual(state, { linkedGroup: { id: -100222, title: 'Discussion', membersCount: 15 }, groups: [
-    { id: -100333, title: 'Community', membersCount: 30 }, { id: -100222, title: 'Discussion', membersCount: 15 },
+  assert.deepEqual(state, { linkedGroup: { id: -100222, title: 'Discussion', username: 'discussion', membersCount: 15 }, groups: [
+    { id: -100333, title: 'Community', username: 'community', membersCount: 30 },
+    { id: -100222, title: 'Discussion', username: 'discussion', membersCount: 15 },
   ] });
+  assert.ok(state.groups.every(group => group.id !== -100555), 'groups not returned as usable choices must not become selectable');
   assert.deepEqual(requests.map(request => request.className), ['channels.GetFullChannel', 'channels.GetGroupsForDiscussion']);
   await assert.rejects(driver.getDiscussionGroupState(111), /Invalid broadcast channel/);
 });
@@ -108,7 +111,7 @@ test('discussion group modal targets the current broadcast channel and confirms 
   const state = { clientActiveDialog: { id: -100111, type: 'channel', title: 'News' }, clientActiveChatId: -100111,
     clientSelectedInstance: 'a', chatSelectionVersion: 6 };
   const calls = [], notices = [];
-  let currentLinked = { id: -100222, title: 'Old group' };
+  let currentLinked = { id: -100222, title: 'Old group', username: 'old_group' };
   class FakeOption { constructor(text, value) { this.text = text; this.value = value; this.disabled = false; } }
   const context = vm.createContext({ state, encodeURIComponent, Option: FakeOption, window: { confirm: () => true },
     document: { getElementById: id => elements.get(id) || null },
@@ -117,11 +120,13 @@ test('discussion group modal targets the current broadcast channel and confirms 
       if (method === 'POST' && body.unlink) { currentLinked = undefined; return { linked: false }; }
       if (method === 'POST') { currentLinked = { id: body.groupId, title: 'New group' }; return { linked: true }; }
       return { ...(currentLinked ? { linkedGroup: currentLinked } : {}),
-        groups: [{ id: -100222, title: 'Old group' }, { id: -100333, title: 'New group' }] };
+        groups: [{ id: -100222, title: 'Old group', username: 'old_group' }, { id: -100333, title: 'New group', username: 'new_group' }] };
     }, showToast: (message, kind) => notices.push({ message, kind }) });
   vm.runInContext(`${source.slice(start, end)}\nthis.openDiscussionGroupDialog = openDiscussionGroupDialog;`, context);
   await context.openDiscussionGroupDialog();
   const select = elements.get('discussion-group-select');
+  assert.match(select.children[1].text, /@old_group/);
+  assert.match(elements.get('discussion-group-current').textContent, /@old_group/);
   select.value = '-100333';
   await elements.get('btn-discussion-group-link').onclick();
   assert.equal(calls[0].url, '/api/instances/a/account/discussion-groups?channelId=-100111');

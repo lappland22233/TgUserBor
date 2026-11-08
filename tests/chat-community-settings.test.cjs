@@ -21,11 +21,15 @@ test('peer profiles expose default member restrictions and supergroup slow mode'
   driver.resolvePeer = () => peer;
   driver.client = {
     getEntity: async () => ({ className: 'Channel', id: bigInt(42), title: 'Forum', broadcast: false, joinToSend: true, joinRequest: false }),
-    invoke: async request => request instanceof Api.channels.GetFullChannel ? { fullChat: {
-      about: 'About', participantsCount: 12, slowmodeSeconds: 30,
-      defaultBannedRights: new Api.ChatBannedRights({ sendMessages: true, sendPhotos: true, inviteUsers: true, untilDate: 0 }),
-      antispam: true, participantsHidden: true,
-    } } : { stories: { stories: [] } },
+    invoke: async request => request instanceof Api.channels.GetFullChannel ? {
+      fullChat: {
+        about: 'About', participantsCount: 12, slowmodeSeconds: 30,
+        defaultBannedRights: new Api.ChatBannedRights({ inviteUsers: false }),
+        antispam: true, participantsHidden: true,
+      },
+      chats: [new Api.Channel({ id: bigInt(42), title: 'Forum', photo: new Api.ChatPhotoEmpty(), date: 1,
+        megagroup: true, defaultBannedRights: new Api.ChatBannedRights({ sendMessages: true, sendPhotos: true, inviteUsers: true, untilDate: 0 }) })],
+    } : { stories: { stories: [] } },
   };
   driver.logger = { debug() {} };
   const profile = await driver.getPeerProfile(-10042);

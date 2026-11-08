@@ -54,6 +54,7 @@ export type MessageReportProgress =
 export interface DiscussionGroupInfo {
   id: number;
   title: string;
+  username?: string;
   membersCount?: number;
 }
 
@@ -287,6 +288,8 @@ export interface AdminPermissions {
 export interface ParticipantInfo {
   user: UserRef;
   role: 'owner' | 'admin' | 'member' | 'banned' | 'left';
+  /** Telegram may represent a restricted but still-present channel member as ChannelParticipantBanned. */
+  isLeft?: boolean;
   joinedDate?: number;
   kickedBy?: UserRef;
   promotedBy?: UserRef;
@@ -298,6 +301,13 @@ export interface ParticipantInfo {
 export interface ParticipantsPage {
   count: number;
   participants: ParticipantInfo[];
+  /** Actions the current account can perform in this group. Missing/unknown rights are false. */
+  selfPermissions?: {
+    isCreator: boolean;
+    canInviteUsers: boolean;
+    canBanUsers: boolean;
+    canAddAdmins: boolean;
+  };
   nextOffset?: number;
 }
 

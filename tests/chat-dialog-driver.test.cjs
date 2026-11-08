@@ -48,6 +48,21 @@ test('dialog list includes Telegram auto-delete periods for the client clock ico
   assert.equal(dialogs[0].ttlPeriod, 604800);
 });
 
+test('megagroups are classified as groups and retain their public username', async () => {
+  const driver = Object.create(TelegramDriver.prototype);
+  driver.selfId = 77;
+  driver.client = { getDialogs: async () => [{
+    id: -10042,
+    entity: { className: 'Channel', id: 42, title: 'Public group', username: 'public_group', megagroup: true },
+    isChannel: true,
+    isGroup: true,
+    unreadCount: 0,
+  }] };
+  const [dialog] = await driver.getDialogs();
+  assert.equal(dialog.type, 'supergroup');
+  assert.equal(dialog.username, 'public_group');
+});
+
 test('HTTP archive endpoint forwards folder and pagination to the selected account', async () => {
   let received;
   const manager = { getInstance: id => ({ accountAction: async (action, params) => { received = {id, action, params}; return []; } }) };

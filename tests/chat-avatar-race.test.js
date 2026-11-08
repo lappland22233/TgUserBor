@@ -60,11 +60,11 @@ test('late previous-chat avatar failure cannot hide the current avatar', async (
   const elements={ 'client-chat-avatar-img':img, 'client-chat-avatar':text,
     'client-message-textarea':{value:''}, 'client-chat-title':{}, 'client-chat-subtitle':{}, 'client-chat-actions':{style:{}},
     'client-drawer':{classList:{contains:()=>false}}, 'client-messages-container':{innerHTML:''} };
-  const pending=[];
+  const pending=[]; let fullDialogListRenders = 0, selectionUpdates = 0;
   const context=vm.createContext({state,window:{},document:{getElementById:id=>elements[id]||null,querySelector:()=>({classList:{add(){}}})},
     scheduler:{loadImage:()=>new Promise(resolve=>pending.push(resolve))},
     clientDraftKey:id=>String(id),toggleChatSearchBar(){},cancelReplyBanner(){},cancelEditBanner(){},clearStagedAttachment(){},
-    currentPreviewVideo:null,autoResizeTextarea(){},renderClientDialogs(){},updateChatMuteButtonState(){},
+    currentPreviewVideo:null,autoResizeTextarea(){},renderClientDialogs(){fullDialogListRenders++;},updateClientDialogSelection(){selectionUpdates++;},updateChatMuteButtonState(){},
     async loadClientMessages(){return true;}, async markVisibleChatRead(){}, updateClientHistoryBanner(){},
   });
   vm.runInContext(source.slice(chatStart,chatEnd)+'\nthis.selectClientChat = selectClientChat;',context);
@@ -73,4 +73,6 @@ test('late previous-chat avatar failure cannot hide the current avatar', async (
   pending[1](true); await Promise.resolve(); assert.equal(text.style.display,'none');
   pending[0](false); await Promise.resolve();
   assert.equal(text.style.display,'none'); assert.equal(text.innerText,'Ne'); assert.equal(img.style.opacity,'1');
+  assert.equal(fullDialogListRenders, 0);
+  assert.equal(selectionUpdates, 2);
 });

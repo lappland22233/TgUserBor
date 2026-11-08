@@ -94,7 +94,7 @@ test('opening an anchor does not mark unread chat as read or load its latest mes
   let read=0, latest=0, anchor;
   const context=vm.createContext({state,window:{chatWs:{recordDialogRead(){read++;},isConnected(){return true;},sendRpc(){read++;return Promise.resolve();}}},
     document:{getElementById:id=>elements[id]||null,querySelector:()=>null},currentPreviewVideo:null,
-    clientDraftKey:()=>'',toggleChatSearchBar(){},cancelReplyBanner(){},cancelEditBanner(){},clearStagedAttachment(){},renderClientDialogs(){},updateClientHistoryBanner(){},updateChatMuteButtonState(){},
+    clientDraftKey:()=>'',toggleChatSearchBar(){},cancelReplyBanner(){},cancelEditBanner(){},clearStagedAttachment(){},renderClientDialogs(){},updateClientDialogSelection(){},updateClientHistoryBanner(){},updateChatMuteButtonState(){},
     loadClientMessages(){latest++;},loadClientMessagesAround:async (...args)=>{anchor=args;return true;},
   });
   vm.runInContext(app.slice(start,end)+'\nthis.select = selectClientChat;',context);
