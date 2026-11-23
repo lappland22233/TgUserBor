@@ -3,20 +3,25 @@ import type { IncomingMessage } from '../adapter';
 export type MiddlewareFn = (msg: IncomingMessage, next: () => Promise<void>) => Promise<void> | void;
 
 export class MiddlewareChain {
-  private readonly middlewares: MiddlewareFn[] = [];
+  private middlewares: Array<{ fn: MiddlewareFn }> = [];
 
-  use(fn: MiddlewareFn): void {
-    this.middlewares.push(fn);
+  use(fn: MiddlewareFn): () => void {
+    const entry = { fn };
+    this.middlewares = [...this.middlewares, entry];
+    return () => {
+      this.middlewares = this.middlewares.filter((middleware) => middleware !== entry);
+    };
   }
 
   async run(msg: IncomingMessage, terminal: () => Promise<void>): Promise<void> {
+    const middlewares = this.middlewares;
     let index = -1;
 
     const dispatch = async (i: number): Promise<void> => {
       if (i <= index) throw new Error('next() called multiple times');
       index = i;
 
-      const fn = this.middlewares[i];
+      const fn = middlewares[i]?.fn;
       if (fn) {
         await fn(msg, () => dispatch(i + 1));
       } else {
@@ -27,4 +32,3 @@ export class MiddlewareChain {
     await dispatch(0);
   }
 }
-

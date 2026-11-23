@@ -499,7 +499,7 @@
             <div class="filter-controls">
               <label class="filter-label">目标实例</label>
               <select class="select-control" id="plugin-instance-select" style="min-width: 170px;">
-                <option value="default">Default Bot</option>
+                <option value="">正在加载实例…</option>
               </select>
               <div class="search-input-wrapper">
                 <svg class="search-icon"><use href="#icon-search"/></svg>
@@ -1546,6 +1546,10 @@
         <div class="form-group">
           <label class="form-label">入口代码 (index.js)</label>
           <textarea class="form-textarea" id="plugin-input-code" placeholder="留空将自动生成标准插件模板代码..."></textarea>
+        </div>
+        <div class="checkbox-wrapper">
+          <input type="checkbox" id="plugin-input-default-enabled" checked>
+          <label for="plugin-input-default-enabled" class="checkbox-text">在没有单独设置的实例中启用</label>
         </div>
       </div>
       <div class="modal-footer">

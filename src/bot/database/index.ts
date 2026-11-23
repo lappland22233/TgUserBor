@@ -39,6 +39,7 @@ export class Database {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     this.db = new DatabaseSyncClass(filePath);
+    this.db.exec('PRAGMA busy_timeout = 5000;');
     this.db.exec('PRAGMA journal_mode = WAL;');
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.migrate();
@@ -61,13 +62,16 @@ export class Database {
     const insert = this.db.prepare(
       'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
     );
+    const findMigration = this.db.prepare('SELECT version FROM schema_migrations WHERE version = ?');
 
     for (const migration of MIGRATIONS) {
       if (applied.has(migration.version)) continue;
-      this.db.exec('BEGIN');
+      this.db.exec('BEGIN IMMEDIATE');
       try {
-        this.db.exec(migration.up);
-        insert.run(migration.version, migration.name, Date.now());
+        if (!findMigration.get(migration.version)) {
+          this.db.exec(migration.up);
+          insert.run(migration.version, migration.name, Date.now());
+        }
         this.db.exec('COMMIT');
       } catch (err: any) {
         this.db.exec('ROLLBACK');

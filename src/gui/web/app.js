@@ -11,7 +11,9 @@ const state = {
   currentAuthInstanceId: null,
   currentAuthStep: null,
   selectedInstanceForPlugins: null,
+  pluginListInstanceId: undefined,
   selectedConfigPlugin: null,
+  selectedConfigInstance: null,
   clientSelectedInstance: null,
   clientActiveChatId: null,
   clientActiveDialog: null,
@@ -596,7 +598,7 @@ function switchView(viewName) {
     if (tableWrap) tableWrap.scrollTop = 0;
     initSchedulerView();
   }
-  if (viewName === 'plugins') renderPlugins();
+  if (viewName === 'plugins') void loadPlugins();
   if (viewName === 'logs') loadHistoryLogs(el.logFilterInst?.value || 'all');
 }
 
@@ -640,16 +642,25 @@ async function loadInstances() {
   } catch (err) {
     showToast(`加载实例数据失败: ${err.message}`, 'error');
   }
+  if (state.pluginListInstanceId !== state.selectedInstanceForPlugins) await loadPlugins();
 }
 
 // Plugins
+let pluginListRequestId = 0;
+
 async function loadPlugins() {
+  const requestId = ++pluginListRequestId;
+  const instanceId = state.selectedInstanceForPlugins;
+  if (state.pluginListInstanceId !== instanceId) renderPlugins();
   try {
-    state.plugins = await api('/api/plugins');
+    const plugins = await api(instanceId ? `/api/plugins?instance=${encodeURIComponent(instanceId)}` : '/api/plugins');
+    if (requestId !== pluginListRequestId) return;
+    state.plugins = plugins;
+    state.pluginListInstanceId = instanceId;
     el.dashPluginsCount.innerText = String(state.plugins.length);
     renderPlugins();
   } catch (err) {
-    showToast(`加载插件列表失败: ${err.message}`, 'error');
+    if (requestId === pluginListRequestId) showToast(`加载插件列表失败: ${err.message}`, 'error');
   }
 }
 
@@ -777,6 +788,7 @@ function updateInstanceStatus(instanceId, status) {
   if (inst) {
     inst.status = status;
     renderInstances();
+    if (instanceId === state.selectedInstanceForPlugins) renderPlugins();
   } else {
     loadInstances();
   }
@@ -940,18 +952,21 @@ async function loadHistoryLogs(instanceId = 'all') {
 
 function updateInstanceDropdowns() {
   const opts = state.instances.map((i) => `<option value="${escapeHtml(i.config.id)}">${escapeHtml(i.config.name)} (${escapeHtml(i.config.id)})</option>`).join('');
-  el.pluginInstSelect.innerHTML = opts || '<option value="none">无可用实例</option>';
+  el.pluginInstSelect.innerHTML = opts || '<option value="">无可用实例</option>';
   el.logFilterInst.innerHTML = '<option value="all">全部实例</option>' + opts;
 
-  if (state.instances.length > 0 && !state.instances.find((i) => i.config.id === state.selectedInstanceForPlugins)) {
-    state.selectedInstanceForPlugins = state.instances[0].config.id;
-    el.pluginInstSelect.value = state.selectedInstanceForPlugins;
+  if (!state.instances.some((i) => i.config.id === state.selectedInstanceForPlugins)) {
+    state.selectedInstanceForPlugins = state.instances[0]?.config.id ?? null;
   }
+  el.pluginInstSelect.value = state.selectedInstanceForPlugins ?? '';
 }
 
 // Rendering Plugins
 function renderPlugins() {
   const query = (el.pluginSearchInput.value || '').toLowerCase().trim();
+  const instanceId = state.selectedInstanceForPlugins;
+  const instance = state.instances.find((item) => item.config.id === instanceId);
+  const loadedForInstance = Boolean(instance && state.pluginListInstanceId === instanceId);
 
   const filtered = state.plugins.filter(
     (p) => p.name.toLowerCase().includes(query) || (p.description || '').toLowerCase().includes(query),
@@ -959,6 +974,9 @@ function renderPlugins() {
 
   el.pluginsGrid.innerHTML = filtered
     .map((p) => {
+      const canManage = loadedForInstance && p.available;
+      const canToggle = canManage && ['ONLINE', 'STOPPED', 'ERROR'].includes(instance.status);
+      const enabled = instanceId ? Boolean(loadedForInstance && p.enabled) : p.defaultEnabled;
       return `
       <div class="plugin-card">
         <div class="plugin-card-header">
@@ -972,10 +990,10 @@ function renderPlugins() {
         <div class="plugin-desc">${escapeHtml(p.description || '暂无详细描述')}</div>
         <div class="plugin-card-footer">
           <div class="plugin-actions">
-            <button class="btn btn-secondary btn-sm" onclick="openConfigModal(${inlineJsArg(p.name)})">
+            <button class="btn btn-secondary btn-sm" ${canManage ? '' : 'disabled'} onclick="openConfigModal(${inlineJsArg(p.name)})">
               <svg class="ui-icon-sm"><use href="#icon-settings"/></svg><span>配置</span>
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="reloadPlugin(${inlineJsArg(p.name)})">
+            <button class="btn btn-secondary btn-sm" ${canManage && instance.status === 'ONLINE' ? '' : 'disabled'} onclick="reloadPlugin(${inlineJsArg(p.name)})">
               <svg class="ui-icon-sm"><use href="#icon-refresh"/></svg><span>重载</span>
             </button>
             <button class="btn btn-danger btn-sm" onclick="deletePlugin(${inlineJsArg(p.name)})">
@@ -983,7 +1001,7 @@ function renderPlugins() {
             </button>
           </div>
           <label class="switch" title="启用/禁用">
-            <input type="checkbox" checked onchange="togglePlugin(${inlineJsArg(p.name)}, this.checked)">
+            <input type="checkbox" aria-label="启用 ${escapeHtml(p.name)}" ${enabled ? 'checked' : ''} ${canToggle ? '' : 'disabled'} onchange="togglePlugin(${inlineJsArg(p.name)}, this)">
             <span class="slider"></span>
           </label>
         </div>
@@ -994,14 +1012,20 @@ function renderPlugins() {
 }
 
 // Plugin Actions
-window.togglePlugin = async (pluginName, enabled) => {
-  const instId = el.pluginInstSelect.value;
+window.togglePlugin = async (pluginName, input) => {
+  const instId = state.selectedInstanceForPlugins;
+  const enabled = input.checked;
+  input.disabled = true;
   try {
     const action = enabled ? 'enable' : 'disable';
     await api(`/api/instances/${instId}/plugins/${pluginName}/${action}`, 'POST');
     showToast(`实例 "${instId}" 插件 "${pluginName}" 已${enabled ? '启用' : '禁用'}`, 'success');
   } catch (err) {
+    input.checked = !enabled;
     showToast(`操作失败: ${err.message}`, 'error');
+  } finally {
+    await loadPlugins();
+    input.disabled = false;
   }
 };
 
@@ -1029,13 +1053,15 @@ window.deletePlugin = async (pluginName) => {
 
 window.openConfigModal = async (pluginName) => {
   state.selectedConfigPlugin = pluginName;
-  const instId = el.pluginInstSelect.value;
+  const instId = state.selectedInstanceForPlugins;
+  state.selectedConfigInstance = instId;
   document.getElementById('plugin-config-title').innerText = `插件配置: ${pluginName} (${instId})`;
   try {
     const [configRes, pluginsRes] = await Promise.all([
       api(`/api/plugins/${pluginName}/config?instance=${instId}`),
-      api('/api/plugins'),
+      api(`/api/plugins?instance=${encodeURIComponent(instId)}`),
     ]);
+    if (state.selectedConfigPlugin !== pluginName || state.selectedConfigInstance !== instId) return;
     const config = configRes.config || {};
     const pluginMeta = Array.isArray(pluginsRes) ? pluginsRes.find((p) => p.name === pluginName) : null;
     const schema = pluginMeta?.configSchema || [];
@@ -1549,11 +1575,12 @@ function initListeners() {
     const version = document.getElementById('plugin-input-version').value.trim() || '1.0.0';
     const description = document.getElementById('plugin-input-desc').value.trim();
     const code = document.getElementById('plugin-input-code').value.trim();
+    const defaultEnabled = document.getElementById('plugin-input-default-enabled').checked;
 
     if (!name) return showToast('请输入插件名称', 'error');
 
     try {
-      await api('/api/plugins', 'POST', { name, version, description, code });
+      await api('/api/plugins', 'POST', { name, version, description, code, defaultEnabled });
       showToast(`插件 "${name}" 创建成功`, 'success');
       el.modalCreatePlugin.classList.remove('active');
       loadPlugins();
@@ -1602,7 +1629,7 @@ function initListeners() {
   // Save
   document.getElementById('btn-save-plugin-config').onclick = async () => {
     const pluginName = state.selectedConfigPlugin;
-    const instId = el.pluginInstSelect.value;
+    const instId = state.selectedConfigInstance;
     const formEl = document.getElementById('plugin-config-form');
     const jsonEl = document.getElementById('plugin-config-json');
     const isFormMode = formEl.style.display !== 'none';
@@ -1630,8 +1657,8 @@ function initListeners() {
   // Search & Filter
   el.pluginSearchInput.oninput = () => renderPlugins();
   el.pluginInstSelect.onchange = () => {
-    state.selectedInstanceForPlugins = el.pluginInstSelect.value;
-    renderPlugins();
+    state.selectedInstanceForPlugins = el.pluginInstSelect.value || null;
+    void loadPlugins();
   };
 
   el.btnClearLogs.onclick = () => {
@@ -16956,6 +16983,6 @@ window.onload = async () => {
   initChatMuteModal();
   const btnMarkAll = document.getElementById('btn-dialogs-mark-all-read');
   if (btnMarkAll) btnMarkAll.onclick = () => markAllDialogsRead();
-  await Promise.all([loadStatus(), loadInstances(), loadPlugins()]);
+  await Promise.all([loadStatus(), loadInstances()]);
   setInterval(loadStatus, 5000);
 };

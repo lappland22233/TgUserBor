@@ -4,11 +4,12 @@ export interface ScopedScheduler {
   schedule(id: string, ms: number, fn: () => void | Promise<void>): void;
   cancel(id: string): boolean;
   clear(): void;
+  dispose(): void;
 }
 
 export class Scheduler {
   private readonly timers = new Map<string, NodeJS.Timeout>();
-  private readonly scopes = new Map<string, Set<() => void>>();
+  private readonly scopes = new Map<string, ScopedScheduler>();
 
   delay(ms: number, fn: () => void | Promise<void>): () => void {
     const handle = setTimeout(async () => {
@@ -59,70 +60,71 @@ export class Scheduler {
   }
 
   createScope(scopeName: string): ScopedScheduler {
-    const cleanups = new Set<() => void>();
-    this.scopes.set(scopeName, cleanups);
+    this.scopes.get(scopeName)?.dispose();
+    const timers = new Set<() => void>();
+    const namedTimers = new Map<string, () => void>();
+    let active = true;
+
+    const cancel = (id: string): boolean => {
+      const cancelTimer = namedTimers.get(id);
+      if (!cancelTimer) return false;
+      namedTimers.delete(id);
+      cancelTimer();
+      return true;
+    };
 
     const scoped: ScopedScheduler = {
-      delay: (ms: number, fn: () => void | Promise<void>) => {
-        let active = true;
-        let cancelFn: () => void;
-        const wrapped = async () => {
-          if (!active) return;
-          cleanups.delete(cancelFn);
-          await fn();
-        };
-        cancelFn = this.delay(ms, wrapped);
-        cleanups.add(cancelFn);
-        return () => {
-          active = false;
-          cleanups.delete(cancelFn);
-          cancelFn();
-        };
-      },
-
-      interval: (ms: number, fn: () => void | Promise<void>) => {
-        const cancelFn = this.interval(ms, fn);
-        cleanups.add(cancelFn);
-        return () => {
-          cleanups.delete(cancelFn);
-          cancelFn();
-        };
-      },
-
-      schedule: (id: string, ms: number, fn: () => void | Promise<void>) => {
-        const fullId = `${scopeName}:${id}`;
-        let active = true;
-        const cancelFn = () => {
-          active = false;
-          this.cancel(fullId);
-        };
-        cleanups.add(cancelFn);
-
-        this.schedule(fullId, ms, async () => {
-          if (!active) return;
-          cleanups.delete(cancelFn);
+      delay: (ms, fn) => {
+        if (!active) return () => {};
+        const cancelTimer = this.delay(ms, async () => {
+          timers.delete(cancelTimer);
           await fn();
         });
+        timers.add(cancelTimer);
+        return () => {
+          timers.delete(cancelTimer);
+          cancelTimer();
+        };
       },
 
-      cancel: (id: string) => {
-        const fullId = `${scopeName}:${id}`;
-        return this.cancel(fullId);
+      interval: (ms, fn) => {
+        if (!active) return () => {};
+        const cancelTimer = this.interval(ms, fn);
+        timers.add(cancelTimer);
+        return () => {
+          timers.delete(cancelTimer);
+          cancelTimer();
+        };
       },
+
+      schedule: (id, ms, fn) => {
+        if (!active) return;
+        cancel(id);
+        const cancelTimer = this.delay(ms, async () => {
+          namedTimers.delete(id);
+          await fn();
+        });
+        namedTimers.set(id, cancelTimer);
+      },
+
+      cancel,
 
       clear: () => {
-        for (const cleanup of cleanups) {
-          try {
-            cleanup();
-          } catch {
-            /* ignore */
-          }
-        }
-        cleanups.clear();
+        for (const cancelTimer of timers) cancelTimer();
+        for (const cancelTimer of namedTimers.values()) cancelTimer();
+        timers.clear();
+        namedTimers.clear();
+      },
+
+      dispose: () => {
+        if (!active) return;
+        active = false;
+        scoped.clear();
         this.scopes.delete(scopeName);
       },
     };
 
+    this.scopes.set(scopeName, scoped);
     return scoped;
   }
 
@@ -132,17 +134,7 @@ export class Scheduler {
     }
     this.timers.clear();
 
-    for (const cleanups of this.scopes.values()) {
-      for (const cleanup of cleanups) {
-        try {
-          cleanup();
-        } catch {
-          /* ignore */
-        }
-      }
-      cleanups.clear();
-    }
-    this.scopes.clear();
+    for (const scope of this.scopes.values()) scope.dispose();
   }
 }
 

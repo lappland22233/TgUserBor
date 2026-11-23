@@ -43,31 +43,48 @@ export class CommandRegistry {
 
   register(plugin: string, def: CommandDefinition, handler: CommandHandler): void {
     const key = def.name.toLowerCase();
-    if (this.commands.has(key)) {
-      throw new Error(`command "${def.name}" already registered (by plugin "${this.commands.get(key)!.plugin}")`);
+    const existing = this.commands.get(key);
+    if (existing) {
+      throw new Error(`command "${def.name}" already registered (by plugin "${existing.plugin}")`);
     }
-    this.commands.set(key, { def, handler, plugin });
+    if (this.aliases.has(key)) throw new Error(`command "${def.name}" conflicts with a registered alias`);
 
+    const aliases = new Set<string>();
     if (Array.isArray(def.aliases)) {
-      for (const a of def.aliases) {
-        if (a && a.trim()) {
-          this.alias(a.trim(), def.name);
-        }
+      for (const alias of def.aliases) {
+        if (typeof alias === 'string') aliases.add(alias.trim().toLowerCase());
       }
     }
+    aliases.delete('');
+    aliases.delete(key);
+    for (const alias of aliases) this.checkAlias(alias, key);
+
+    this.commands.set(key, { def, handler, plugin });
+    for (const alias of aliases) this.aliases.set(alias, key);
   }
 
   alias(name: string, target: string): void {
-    this.aliases.set(name.toLowerCase(), target.toLowerCase());
+    const key = name.trim().toLowerCase();
+    const targetKey = target.trim().toLowerCase();
+    if (!key || key === targetKey) return;
+    this.checkAlias(key, targetKey);
+    this.aliases.set(key, targetKey);
   }
 
   unregister(plugin: string): void {
+    for (const [alias, target] of this.aliases) {
+      if (this.commands.get(target)?.plugin === plugin) this.aliases.delete(alias);
+    }
     for (const [key, entry] of this.commands) {
       if (entry.plugin === plugin) this.commands.delete(key);
     }
-    for (const [alias, target] of this.aliases) {
-      const owner = this.commands.get(target)?.plugin;
-      if (owner === plugin) this.aliases.delete(alias);
+  }
+
+  private checkAlias(key: string, target: string): void {
+    if (this.commands.has(key)) throw new Error(`alias "${key}" conflicts with a registered command`);
+    const existing = this.aliases.get(key);
+    if (existing !== undefined && existing !== target) {
+      throw new Error(`alias "${key}" already registered for command "${existing}"`);
     }
   }
 

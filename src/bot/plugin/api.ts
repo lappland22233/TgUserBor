@@ -67,6 +67,8 @@ export interface PluginManifest {
   description?: string;
   author?: string;
   entry?: string;
+  /** Fallback when the instance has no explicit enabled state. Defaults to true. */
+  defaultEnabled?: boolean;
   configSchema?: ConfigField[];
 }
 

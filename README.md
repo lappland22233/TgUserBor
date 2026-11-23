@@ -10,7 +10,7 @@
 ## ✨ 特性
 
 - **MTProto 登录**（`telegram` 库，纯 JS），无需 Bot Token
-- **插件系统**：从 `plugins/` 自动加载，支持**热重载**、按需启用/禁用
+- **插件系统**：从 `plugins/` 自动发现，支持**热重载**、清单默认启用设置和按实例启停
 - **命令解析器**：多前缀（`.` `/` 可配），支持引号参数和别名
 - **三级权限控制**：全局 / 用户 / 群组 / 插件
 - **持久化**：`better-sqlite3`，自动迁移；插件配置 + 使用记录
@@ -153,7 +153,8 @@ npm start
   "name": "hello",
   "version": "1.0.0",
   "description": "Friendly greeting command.",
-  "entry": "index.js"
+  "entry": "index.js",
+  "defaultEnabled": true
 }
 ```
 
@@ -191,6 +192,7 @@ module.exports = {
 ```
 
 修改 `index.js` 后保存，框架会在几百毫秒内**热重载**该插件（无需重启）。
+`defaultEnabled` 省略时默认为 `true`。设置为 `false` 后，插件在实例首次发现时保持禁用。通过插件中心或 `.plugins enable/disable` 保存的实例开关优先于清单默认值。
 
 ### 内置插件
 
@@ -210,6 +212,7 @@ module.exports = {
 | **purge** | `.del`（别名 `.d`）/ `.purge <count>` | 单条回复撤回与批量快速清理 |
 | **afk** | `.afk [reason]` | 离开状态自动防刷屏回复与上线全量汇报 |
 | **tools** | `.id` / `.calc` / `.time` / `.tr` / `.qr` | 实体 ID 查询、数学计算、多时区时钟、免 Key 文本翻译、二维码生成 |
+| **text** | `.textinfo [文本]` / `.replace "查找" "替换" [原文]` | 统计字符、词、行与 UTF-8 字节，或按字面替换文本。可从回复消息读取原文 |
 | **eval** | `.eval <code>` / `.sh <cmd>` | 运行时 JavaScript 及 Shell 执行（严格 Owner Only） |
 | **plugins** | `.plugins <list/enable/disable/reload>` | 插件状态管理与热重载控制（Owner Only） |
 | **welcome** | 进群事件监听 / `.setwelcome` | 新成员进群自定义模版欢迎 |
