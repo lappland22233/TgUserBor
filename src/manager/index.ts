@@ -1,7 +1,8 @@
 import { EventEmitter } from 'events';
+import * as path from 'path';
 import { InstanceStore } from './store';
 import { ManagedInstance } from './instance';
-import type { InstanceConfig, InstanceInfo } from './types';
+import type { InstanceConfig, InstanceInfo, PluginAction } from './types';
 
 export class InstanceManager extends EventEmitter {
   readonly store: InstanceStore;
@@ -93,9 +94,10 @@ export class InstanceManager extends EventEmitter {
     return deleted;
   }
 
-  async broadcastPluginAction(action: 'enable' | 'disable' | 'reload', pluginName: string): Promise<void> {
-    const promises: Promise<any>[] = [];
+  async broadcastPluginAction(action: PluginAction, pluginName: string, pluginDir?: string): Promise<void> {
+    const promises: Promise<void>[] = [];
     for (const inst of this.instances.values()) {
+      if (pluginDir && path.resolve(inst.config.pluginDir) !== path.resolve(pluginDir)) continue;
       if (inst.getInfo().status === 'ONLINE') {
         promises.push(inst.pluginAction(action, pluginName).catch(() => {}));
       }

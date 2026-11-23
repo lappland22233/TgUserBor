@@ -118,4 +118,20 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE scheduled_tasks ADD COLUMN time_spec TEXT;
     `,
   },
+  {
+    version: 6,
+    name: 'optional_plugin_enabled_override',
+    up: `
+      ALTER TABLE plugin_state RENAME TO plugin_state_legacy;
+      CREATE TABLE plugin_state (
+        name        TEXT PRIMARY KEY,
+        enabled     INTEGER,
+        config_json TEXT,
+        loaded_at   INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+      );
+      INSERT INTO plugin_state SELECT name, enabled, config_json, loaded_at, updated_at FROM plugin_state_legacy;
+      DROP TABLE plugin_state_legacy;
+    `,
+  },
 ];

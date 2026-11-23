@@ -4,6 +4,9 @@ import * as path from 'path';
 import * as os from 'os';
 import * as QRCode from 'qrcode';
 import { Database } from '../../bot/database';
+import type { PluginManifest } from '../../bot/plugin/api';
+import { readPluginManifest } from '../../bot/plugin/manifest';
+import { readPluginConfig, readPluginEnabled, writePluginConfig, writePluginEnabled } from '../../bot/plugin/state';
 import type { InstanceManager } from '../../manager';
 import type { CacheManager } from '../cache-manager';
 import { mediaDownloadDisposition, parseByteRange } from '../media-response';
@@ -97,6 +100,23 @@ function isSavedMessageTagReaction(value: any): boolean {
     return BigInt(value.value) <= 9223372036854775807n;
   }
   return false;
+}
+
+function listInstalledPlugins(root: string): Array<{ folder: string; name: string; manifest?: PluginManifest }> {
+  if (!fs.existsSync(root)) return [];
+  const plugins = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+    const folder = path.join(root, entry.name);
+    if (!fs.existsSync(path.join(folder, 'plugin.json'))) continue;
+    try {
+      const manifest = readPluginManifest(folder);
+      plugins.push({ folder, name: manifest.name, manifest });
+    } catch {
+      plugins.push({ folder, name: entry.name });
+    }
+  }
+  return plugins;
 }
 
 export async function handleApiRoute(
@@ -366,13 +386,32 @@ export async function handleApiRoute(
       return true;
     }
 
-    // Per-instance plugin toggle: POST /api/instances/:id/plugins/:name/toggle
+    // Per-instance plugin operations
     const pluginToggleMatch = subRoute.match(/^plugins\/([a-zA-Z0-9_-]+)\/(enable|disable|reload)$/);
     if (pluginToggleMatch && method === 'POST') {
       const pluginName = pluginToggleMatch[1];
       const action = pluginToggleMatch[2] as 'enable' | 'disable' | 'reload';
       try {
-        await inst!.pluginAction(action, pluginName);
+        const { status, pid } = inst!.getInfo();
+        if (status === 'ONLINE') {
+          await inst!.pluginAction(action, pluginName);
+        } else {
+          if (action === 'reload' || pid || (status !== 'STOPPED' && status !== 'ERROR')) {
+            sendJson(res, 409, { error: `Instance "${instId}" is not online` });
+            return true;
+          }
+          const installed = listInstalledPlugins(inst!.config.pluginDir || pluginsDir);
+          if (!installed.some((plugin) => plugin.name === pluginName && plugin.manifest)) {
+            sendJson(res, 404, { error: `Plugin "${pluginName}" not found` });
+            return true;
+          }
+          const db = new Database(inst!.config.dbPath);
+          try {
+            writePluginEnabled(db, pluginName, action === 'enable');
+          } finally {
+            db.close();
+          }
+        }
         sendJson(res, 200, { success: true, plugin: pluginName, action });
       } catch (err: any) {
         sendJson(res, 500, { error: err.message });
@@ -5182,36 +5221,50 @@ export async function handleApiRoute(
 
   // --- 3. Global Plugin Center Endpoints ---
   if (pathname === '/api/plugins' && method === 'GET') {
-    if (!fs.existsSync(pluginsDir)) {
-      sendJson(res, 200, []);
+    const instanceId = url.searchParams.get('instance');
+    const inst = instanceId ? manager.getInstance(instanceId) : undefined;
+    if (instanceId && !inst) {
+      sendJson(res, 404, { error: `Instance "${instanceId}" not found` });
       return true;
     }
 
-    const dirs = fs
-      .readdirSync(pluginsDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-
-    const pluginList = [];
-    for (const name of dirs) {
-      const manifestPath = path.join(pluginsDir, name, 'plugin.json');
-      if (fs.existsSync(manifestPath)) {
-        try {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-          pluginList.push({
-            name: manifest.name || name,
-            version: manifest.version || '1.0.0',
-            description: manifest.description || '',
-            author: manifest.author || 'User',
-            entry: manifest.entry || 'index.js',
-            configSchema: manifest.configSchema || [],
-          });
-        } catch {
-          pluginList.push({ name, version: '1.0.0', description: 'Manifest error' });
-        }
+    let db: Database | undefined;
+    try {
+      const plugins = listInstalledPlugins(pluginsDir);
+      const instancePluginDir = inst?.config.pluginDir || pluginsDir;
+      const instancePlugins = path.resolve(instancePluginDir) === path.resolve(pluginsDir)
+        ? plugins
+        : listInstalledPlugins(instancePluginDir);
+      const instanceManifests = new Map<string, PluginManifest>();
+      for (const { name, manifest } of instancePlugins) {
+        if (manifest && !instanceManifests.has(name)) instanceManifests.set(name, manifest);
       }
+      if (inst && fs.existsSync(inst.config.dbPath)) db = new Database(inst.config.dbPath);
+      const pluginList = plugins.map(({ name, manifest }) => {
+        const instanceManifest = instanceManifests.get(name);
+        const activeManifest = instanceManifest ?? manifest;
+        const defaultEnabled = activeManifest ? activeManifest.defaultEnabled !== false : false;
+        return {
+          name,
+          version: activeManifest?.version || '1.0.0',
+          description: activeManifest ? activeManifest.description || '' : 'Manifest error',
+          author: activeManifest?.author || 'User',
+          entry: activeManifest?.entry || 'index.js',
+          configSchema: activeManifest?.configSchema || [],
+          defaultEnabled,
+          ...(inst && {
+            available: Boolean(instanceManifest),
+            enabled: Boolean(instanceManifest) && ((db && readPluginEnabled(db, name)) ?? defaultEnabled),
+          }),
+        };
+      });
+      res.setHeader('Cache-Control', 'no-store');
+      sendJson(res, 200, pluginList);
+    } catch (err: any) {
+      sendJson(res, 500, { error: err.message });
+    } finally {
+      db?.close();
     }
-    sendJson(res, 200, pluginList);
     return true;
   }
 
@@ -5219,13 +5272,17 @@ export async function handleApiRoute(
     try {
       const body = await parseJsonBody(req);
       const name = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      if (!name) {
+      if (!name || name === 'node_modules') {
         sendJson(res, 400, { error: 'Invalid or missing plugin name' });
+        return true;
+      }
+      if (body.defaultEnabled !== undefined && typeof body.defaultEnabled !== 'boolean') {
+        sendJson(res, 400, { error: 'defaultEnabled must be a boolean' });
         return true;
       }
 
       const pluginFolder = path.join(pluginsDir, name);
-      if (fs.existsSync(pluginFolder)) {
+      if (fs.existsSync(pluginFolder) || listInstalledPlugins(pluginsDir).some((plugin) => plugin.name === name)) {
         sendJson(res, 400, { error: `Plugin "${name}" already exists` });
         return true;
       }
@@ -5234,21 +5291,17 @@ export async function handleApiRoute(
 
       const manifest = {
         name,
-        version: body.version || '1.0.0',
-        description: body.description || 'Custom UserBot plugin',
+        version: String(body.version || '').trim() || '1.0.0',
+        description: String(body.description || '') || 'Custom UserBot plugin',
         entry: 'index.js',
+        defaultEnabled: body.defaultEnabled ?? true,
       };
-      fs.writeFileSync(path.join(pluginFolder, 'plugin.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 
       // Generate scaffold index.js code
       const sampleCode = body.code || `'use strict';
 
 module.exports = {
-  manifest: {
-    name: '${name}',
-    version: '${manifest.version}',
-    description: '${manifest.description}',
-  },
+  manifest: require('./plugin.json'),
 
   activate(ctx) {
     ctx.command(
@@ -5271,7 +5324,7 @@ module.exports = {
       },
       async ({ command, editOrReply }) => {
         const input = command.args.join(' ') || '未携带参数';
-        await editOrReply('✨ <b>${name}</b> 插件执行成功！参数内容: <code>' + input + '</code>', { parseMode: 'html' });
+        await editOrReply('${name} 插件执行成功！参数内容: ' + input, { parseMode: 'plain' });
       },
     );
   },
@@ -5283,9 +5336,10 @@ module.exports = {
 `;
 
       fs.writeFileSync(path.join(pluginFolder, 'index.js'), sampleCode, 'utf-8');
+      fs.writeFileSync(path.join(pluginFolder, 'plugin.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 
       // Notify all running instances
-      await manager.broadcastPluginAction('reload', name);
+      await manager.broadcastPluginAction('reload', name, pluginsDir);
 
       sendJson(res, 201, { success: true, plugin: manifest });
     } catch (err: any) {
@@ -5298,19 +5352,14 @@ module.exports = {
   const pluginDeleteMatch = pathname.match(/^\/api\/plugins\/([a-zA-Z0-9_-]+)$/);
   if (pluginDeleteMatch && method === 'DELETE') {
     const pluginName = pluginDeleteMatch[1];
-    const pluginFolder = path.join(pluginsDir, pluginName);
-
-    if (!fs.existsSync(pluginFolder)) {
-      sendJson(res, 404, { error: `Plugin "${pluginName}" not found` });
-      return true;
-    }
-
     try {
-      // 1. Disable across all running instances
-      await manager.broadcastPluginAction('disable', pluginName);
-
-      // 2. Remove directory
-      fs.rmSync(pluginFolder, { recursive: true, force: true });
+      const installed = listInstalledPlugins(pluginsDir).find(({ name }) => name === pluginName);
+      if (!installed) {
+        sendJson(res, 404, { error: `Plugin "${pluginName}" not found` });
+        return true;
+      }
+      fs.rmSync(installed.folder, { recursive: true, force: true });
+      await manager.broadcastPluginAction('unload', pluginName, pluginsDir);
       sendJson(res, 200, { success: true, plugin: pluginName });
     } catch (err: any) {
       sendJson(res, 500, { error: err.message });
@@ -5332,15 +5381,18 @@ module.exports = {
 
     const dbPath = inst.config.dbPath;
     if (method === 'GET') {
+      res.setHeader('Cache-Control', 'no-store');
       try {
         if (!fs.existsSync(dbPath)) {
           sendJson(res, 200, { config: {} });
           return true;
         }
         const db = new Database(dbPath);
-        const row = db.raw().prepare('SELECT config_json FROM plugin_state WHERE name = ?').get(pluginName) as any;
-        db.close();
-        sendJson(res, 200, { config: row?.config_json ? JSON.parse(row.config_json) : {} });
+        try {
+          sendJson(res, 200, { config: readPluginConfig(db, pluginName) });
+        } finally {
+          db.close();
+        }
       } catch (err: any) {
         sendJson(res, 500, { error: err.message });
       }
@@ -5350,32 +5402,29 @@ module.exports = {
     if (method === 'PUT') {
       try {
         const body = await parseJsonBody(req);
-        const config = body.config || {};
+        const config = body.config ?? {};
+        if (typeof config !== 'object' || Array.isArray(config)) {
+          sendJson(res, 400, { error: '插件配置必须是 JSON 对象' });
+          return true;
+        }
 
         // Schema validation (if plugin declares configSchema)
-        const manifestPath = path.join(pluginsDir, pluginName, 'plugin.json');
-        if (fs.existsSync(manifestPath)) {
-          try {
-            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-            if (manifest.configSchema && manifest.configSchema.length > 0) {
-              const fieldErrors = validatePluginConfig(manifest.configSchema, config);
-              if (Object.keys(fieldErrors).length > 0) {
-                sendJson(res, 400, { error: '配置校验失败', fieldErrors });
-                return true;
-              }
-            }
-          } catch { /* manifest parse error — skip validation */ }
+        const installed = listInstalledPlugins(inst.config.pluginDir || pluginsDir).find(({ name, manifest }) => name === pluginName && manifest);
+        const schema = installed?.manifest?.configSchema;
+        if (schema?.length) {
+          const fieldErrors = validatePluginConfig(schema, config);
+          if (Object.keys(fieldErrors).length > 0) {
+            sendJson(res, 400, { error: '配置校验失败', fieldErrors });
+            return true;
+          }
         }
 
         const db = new Database(dbPath);
-        const now = Date.now();
-        const jsonStr = JSON.stringify(config);
-        db.raw().prepare(`
-          INSERT INTO plugin_state (name, enabled, config_json, loaded_at, updated_at)
-          VALUES (?, 1, ?, ?, ?)
-          ON CONFLICT(name) DO UPDATE SET config_json = excluded.config_json, updated_at = excluded.updated_at
-        `).run(pluginName, jsonStr, now, now);
-        db.close();
+        try {
+          writePluginConfig(db, pluginName, config);
+        } finally {
+          db.close();
+        }
 
         // Trigger reload if online
         if (inst.getInfo().status === 'ONLINE') {

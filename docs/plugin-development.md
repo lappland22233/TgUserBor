@@ -20,6 +20,12 @@ module.exports = {
 
 保存即热重载。
 
+## 默认启用与实例开关
+
+清单中的 `defaultEnabled` 可以设为 `false`，让插件被发现后等待手动启用。省略该字段时默认为 `true`。Web 插件中心和 `.plugins enable/disable` 保存的实例开关优先于清单默认值。保存插件配置时会保留实例的启用状态。
+
+清单名需与模块导出的 `manifest.name` 一致。`entry` 支持插件目录内的相对路径，例如 `lib/index.js`。启用热重载时，新增插件目录及其代码变动会自动加载，移除 `plugin.json` 会卸载插件。新版本加载或激活失败时，框架会保留或尝试恢复旧版本。
+
 ## configSchema 声明式配置
 
 在 `plugin.json` 中声明 `configSchema` 后，Web 管理界面会自动生成可视化配置表单。
@@ -111,6 +117,7 @@ activate(ctx) {
 | `ctx.command(def, handler)` | 注册命令（推荐写法） |
 | `ctx.on(event, fn)` | 订阅事件，自动随插件卸载 |
 | `ctx.onAny(fn)` | 订阅所有事件 |
+| `ctx.use(fn)` | 注册消息中间件，禁用、卸载或热重载时自动移除 |
 | `ctx.getUser(id)` | 查用户 |
 | `ctx.ownerId` | 拥有者 ID |
 

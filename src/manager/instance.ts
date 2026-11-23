@@ -9,6 +9,7 @@ import type {
   InstanceMetrics,
   IPCToParent,
   IPCToChild,
+  PluginAction,
 } from './types';
 
 export interface LogEntry {
@@ -259,7 +260,7 @@ export class ManagedInstance extends EventEmitter {
     this.qrLogin = undefined;
   }
 
-  pluginAction(action: 'enable' | 'disable' | 'reload', pluginName: string): Promise<void> {
+  pluginAction(action: PluginAction, pluginName: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.child || this.status !== 'ONLINE') {
         return reject(new Error(`Instance "${this.config.id}" is not online`));

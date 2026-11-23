@@ -273,12 +273,15 @@ async function runWorker() {
     } else if (raw.type === 'PLUGIN_ACTION') {
       const { actionId, action, pluginName } = raw;
       try {
+        await startup;
         if (action === 'enable') {
           await bot.plugins.setEnabled(pluginName, true);
         } else if (action === 'disable') {
           await bot.plugins.setEnabled(pluginName, false);
         } else if (action === 'reload') {
           await bot.plugins.reload(pluginName);
+        } else if (action === 'unload') {
+          await bot.plugins.unload(pluginName);
         }
         sendIPC({ type: 'PLUGIN_ACTION_RESULT', actionId, success: true });
       } catch (err: any) {
@@ -2226,8 +2229,9 @@ async function runWorker() {
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
 
+  const startup = bot.start();
   try {
-    await bot.start();
+    await startup;
   } catch (err: any) {
     logger.error({ err }, 'Failed to start bot');
     sendIPC({ type: 'STATUS_CHANGE', status: 'ERROR', error: err.message });

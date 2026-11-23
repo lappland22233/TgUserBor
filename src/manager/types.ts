@@ -47,6 +47,8 @@ export interface InstanceInfo {
   pendingAuthStep?: 'phone' | 'code' | 'password';
 }
 
+export type PluginAction = 'enable' | 'disable' | 'reload' | 'unload';
+
 // IPC Message Protocol
 export type IPCToParent =
   | { type: 'STATUS_CHANGE'; status: InstanceStatus; error?: string }
@@ -64,6 +66,6 @@ export type IPCToChild =
   | { type: 'STOP' }
   | { type: 'AUTH_INPUT'; step: 'phone' | 'code' | 'password'; value: string }
   | { type: 'AUTH_QR_START' }
-  | { type: 'PLUGIN_ACTION'; actionId: string; action: 'enable' | 'disable' | 'reload'; pluginName: string }
+  | { type: 'PLUGIN_ACTION'; actionId: string; action: PluginAction; pluginName: string }
   | { type: 'ACCOUNT_ACTION'; actionId: string; action: string; payload?: any };
 

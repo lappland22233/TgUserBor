@@ -1,0 +1,7 @@
+{
+  "name": "text",
+  "version": "1.0.0",
+  "description": "统计消息文本，按字面替换指定内容",
+  "entry": "index.js",
+  "defaultEnabled": true
+}
